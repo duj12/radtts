@@ -274,7 +274,7 @@ class Data(torch.utils.data.Dataset):
         else:
             raise NotImplementedError("type of text is not support.")
 
-        if language_id == 0:  #  Chinese
+        if language_id == 0:  # Chinese
             pho_ids, tone_ids, language_id_list = list(), list(), list()
             for kkk, phoneme in enumerate(phonemes):
                 if not (_isprosody_mark(phoneme) or phoneme[0] == "#"):
@@ -307,15 +307,21 @@ class Data(torch.utils.data.Dataset):
                 pho_ids.append(pho_id)
                 tone_ids.append(tone_id)
                 language_id_list.append(0)
-        elif language_id == 1:    #  English
+        elif language_id == 1:    # English
             pho_ids, tone_ids, language_id_list = list(), list(), list()
             for phoneme in phonemes:
-                if not (self._isprosody_mark(phoneme) or phoneme[0] == "#"):
-                    assert (phoneme[-2:].isdigit())
-                    pho = phoneme[:-2]
-                    if pho == "V":
-                        pho = "VV"
-                    tone_id = 14
+                if not (_isprosody_mark(phoneme) or phoneme[0] == "#"):
+                    if not phoneme[-2:].isdigit():
+                        print(f"DEBUG: phoneme is {phoneme}, tone is not 14!")
+                        if phoneme[-1].isdigit():
+                            pho = phoneme[:-1]
+                            tone_id = int(phoneme[-1])
+                        else:
+                            pho = phoneme
+                            tone_id = 0
+                    else:
+                        pho = phoneme[:-2]
+                        tone_id = 14
                 else:
                     pho = phoneme
                     tone_id = 0
@@ -375,7 +381,7 @@ class Data(torch.utils.data.Dataset):
         p_voiced = None
         voiced_mask = None
         if self.use_f0:
-            filename = '_'.join(audiopath.split('/')[-3:])
+            filename = '_'.join(audiopath.split('/')[-4:])
             f0_path = os.path.join(self.betabinom_cache_path, filename)
             f0_path += "_f0_sr{}_fl{}_hl{}_f0min{}_f0max{}_log{}.pt".format(
                 self.sampling_rate, self.filter_length, self.hop_length,
