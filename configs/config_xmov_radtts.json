@@ -1,6 +1,6 @@
 {
     "train_config": {
-        "output_directory": "/debug",
+        "output_directory": "exp",
         "epochs": 10000000,
         "optim_algo": "RAdam",
         "learning_rate": 1e-4,
@@ -14,8 +14,8 @@
         "ignore_layers_warmstart": [],
         "finetune_layers": [],
         "include_layers": [],
-        "vocoder_config_path": "models/hifigan_config_22khz.json",
-        "vocoder_checkpoint_path": "models/hifigan_ljs_generator_v1",
+        "vocoder_config_path": "models/hifigan_config_24khz.json",
+        "vocoder_checkpoint_path": "models/hifigan_xmov.pt",
         "log_attribute_samples": true,
         "log_decoder_samples": false,
         "warmstart_checkpoint_path": "",
@@ -36,26 +36,28 @@
     },
     "data_config": {
         "training_files": {
-            "LJS": {
-                "basedir": "filelists/",
-                "audiodir": "wavs",
-                "filelist": "ljs_audiopath_text_speaker_train_filelist.txt",
+            "LTTS": {
+                "basedir": "/data/megastore/Datasets/55data/TTS/LTTS",
+                "audiodir": "Formatted",
+                "filelist": "trainset_LTTS.json",
+                "language": "0",
                 "lmdbpath": ""
             }
         },
         "validation_files": {
-            "LJS": {
-                "basedir": "filelists/",
-                "audiodir": "wavs",
-                "filelist": "ljs_audiopath_text_speaker_val_filelist.txt",
+            "LTTS": {
+                "basedir": "/data/megastore/Datasets/55data/TTS/LTTS",
+                "audiodir": "Formatted",
+                "filelist": "validset_LTTS.json",
+                "language": "0",
                 "lmdbpath": ""
             }
         },
         "dur_min": 0.1,
-        "dur_max": 10.2,
-        "sampling_rate": 22050,
+        "dur_max": 20.0,
+        "sampling_rate": 24000,
         "filter_length": 1024,
-        "hop_length": 256,
+        "hop_length": 300,
         "win_length": 1024,
         "n_mel_channels": 80,
         "mel_fmin": 0.0,
@@ -70,7 +72,8 @@
         "symbol_set": "radtts",
         "cleaner_names": ["radtts_cleaners"],
         "heteronyms_path": "tts_text_processing/heteronyms",
-        "phoneme_dict_path": "tts_text_processing/cmudict-0.7b",
+        "phoneme_dict_path": "configs/XMOV_PhonemeSet_0608.json",
+        "speaker_map": {},
         "p_phoneme": 1.0,
         "handle_phoneme": "word",
         "handle_phoneme_ambiguous": "ignore",
@@ -91,10 +94,14 @@
         "dist_url": "tcp://localhost:54321"
     },
     "model_config": {
-        "n_speakers": 1,
-        "n_speaker_dim": 16,
-        "n_text": 185,
-        "n_text_dim": 512,
+        "n_speakers": 300,
+        "n_speaker_dim": 256,
+        "n_text": 134,
+        "n_text_dim": 384,
+        "n_tone": 16,
+        "n_tone_dim": 96,
+        "n_lang": 2,
+        "n_lang_dim": 32,
         "n_flows": 8,
         "n_conv_layers_per_step": 4,
         "n_mel_channels": 80,
@@ -109,7 +116,7 @@
         "scaling_fn": "tanh",
         "matrix_decomposition": "LUS",
         "learn_alignments": true,
-        "use_speaker_emb_for_alignment": false,
+        "use_speaker_emb_for_alignment": true,
         "attn_straight_through_estimator": true,
         "use_context_lstm": true,
         "context_lstm_norm": "spectral",

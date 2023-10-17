@@ -31,16 +31,16 @@ We will soon provide more pre-trained RADTTS models with generative attribute pr
     - `filelist` – <mark>|</mark> (pipe) separated text file with relative audiopath, text, speaker, and optionally categorical label and audio duration in seconds
 ## Training RADTTS (without pitch and energy conditioning)
 1. Train the decoder <br> 
-	`python train.py -c config_ljs_radtts.json -p train_config.output_directory=outdir`
+	`python train.py -c configs/config_ljs_radtts.json -p train_config.output_directory=outdir`
 2. Further train with the duration predictor
-	`python train.py -c config_ljs_radtts.json -p train_config.output_directory=outdir_dir train_config.warmstart_checkpoint_path=model_path.pt model_config.include_modules="decatndur"`
+	`python train.py -c configs/config_ljs_radtts.json -p train_config.output_directory=outdir_dir train_config.warmstart_checkpoint_path=outdir/model_path.pt model_config.include_modules="decatndpm"`
 
 
 ## Training RADTTS++ (with pitch and energy conditioning)
 1. Train the decoder<br> 
-	`python train.py -c config_ljs_decoder.json -p train_config.output_directory=outdir`
+	`python train.py -c configs/config_ljs_decoder.json -p train_config.output_directory=outdir`
 2. Train the attribute predictor: autoregressive flow (agap), bi-partite flow (bgap) or deterministic (dap)<br>
-    `python train.py -c config_ljs_{agap,bgap,dap}.json -p train_config.output_directory=outdir_wattr train_config.warmstart_checkpoint_path=model_path.pt`
+    `python train.py -c configs/config_ljs_{agap,bgap,dap}.json -p train_config.output_directory=outdir_wattr train_config.warmstart_checkpoint_path=model_path.pt`
 
 
 ## Training starting from a pre-trained model, ignoring the speaker embedding table
