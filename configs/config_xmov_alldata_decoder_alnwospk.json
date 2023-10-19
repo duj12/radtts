@@ -16,8 +16,8 @@
         "include_layers": [],
         "vocoder_config_path": "models/hifigan_config_24khz.json",
         "vocoder_checkpoint_path": "models/hifigan_xmov.pt",
-        "log_attribute_samples": true,
-        "log_decoder_samples": false,
+        "log_attribute_samples": false,
+        "log_decoder_samples": true,
         "warmstart_checkpoint_path": "",
         "use_amp": false,
         "grad_clip_val": 1.0,
@@ -42,6 +42,34 @@
                 "filelist": "trainset_LTTS.json",
                 "language": "0",
                 "lmdbpath": ""
+            },
+            "NTTS": {
+                "basedir": "/data/megastore/Datasets/55data/TTS/NTTS",
+                "audiodir": "Formatted",
+                "filelist": "trainset_NTTS.json",
+                "language": "0",
+                "lmdbpath": ""
+            },
+            "ENTTS": {
+                "basedir": "/data/megastore/Datasets/55data/TTS/ENTTS",
+                "audiodir": "Formatted",
+                "filelist": "trainset_ENTTS.json",
+                "language": "1",
+                "lmdbpath": ""
+            },
+            "MSTTS_CN": {
+                "basedir": "/data/megastore/Datasets/55data/TTS/MSTTS_CN",
+                "audiodir": "Formatted",
+                "filelist": "trainset_MSTTS_CN.json",
+                "language": "0",
+                "lmdbpath": ""
+            },
+            "MSTTS_EN": {
+                "basedir": "/data/megastore/Datasets/55data/TTS/MSTTS_EN",
+                "audiodir": "Formatted",
+                "filelist": "trainset_MSTTS_EN.json",
+                "language": "1",
+                "lmdbpath": ""
             }
         },
         "validation_files": {
@@ -50,6 +78,34 @@
                 "audiodir": "Formatted",
                 "filelist": "validset_LTTS.json",
                 "language": "0",
+                "lmdbpath": ""
+            },
+            "NTTS": {
+                "basedir": "/data/megastore/Datasets/55data/TTS/NTTS",
+                "audiodir": "Formatted",
+                "filelist": "validset_NTTS.json",
+                "language": "0",
+                "lmdbpath": ""
+            },
+            "ENTTS": {
+                "basedir": "/data/megastore/Datasets/55data/TTS/ENTTS",
+                "audiodir": "Formatted",
+                "filelist": "validset_ENTTS.json",
+                "language": "1",
+                "lmdbpath": ""
+            },
+            "MSTTS_CN": {
+                "basedir": "/data/megastore/Datasets/55data/TTS/MSTTS_CN",
+                "audiodir": "Formatted",
+                "filelist": "validset_MSTTS_CN.json",
+                "language": "0",
+                "lmdbpath": ""
+            },
+            "MSTTS_EN": {
+                "basedir": "/data/megastore/Datasets/55data/TTS/MSTTS_EN",
+                "audiodir": "Formatted",
+                "filelist": "validset_MSTTS_EN.json",
+                "language": "1",
                 "lmdbpath": ""
             }
         },
@@ -65,10 +121,10 @@
         "f0_min": 80.0,
         "f0_max": 640.0,
         "max_wav_value": 32768.0,
-        "use_f0": false,
-        "use_log_f0": false,
-        "use_energy_avg": false,
-        "use_scaled_energy": false,
+        "use_f0": true,
+        "use_log_f0": 0,
+        "use_energy_avg": true,
+        "use_scaled_energy": true,
         "symbol_set": "radtts",
         "cleaner_names": ["radtts_cleaners"],
         "heteronyms_path": "tts_text_processing/heteronyms",
@@ -112,47 +168,49 @@
         "n_early_every": 2,
         "n_group_size": 2,
         "affine_model": "wavenet",
-        "include_modules": "decatndpm",
+        "include_modules": "decatnvpred",
         "scaling_fn": "tanh",
         "matrix_decomposition": "LUS",
         "learn_alignments": true,
-        "use_speaker_emb_for_alignment": true,
+        "use_speaker_emb_for_alignment": false,
         "attn_straight_through_estimator": true,
         "use_context_lstm": true,
         "context_lstm_norm": "spectral",
-        "context_lstm_w_f0_and_energy": false,
+        "context_lstm_w_f0_and_energy": true,
         "text_encoder_lstm_norm": "spectral",
-        "n_f0_dims": 0,
-        "n_energy_avg_dims": 0,
+        "n_f0_dims": 1,
+        "n_energy_avg_dims": 1,
         "use_first_order_features": false,
         "unvoiced_bias_activation": "relu",
         "decoder_use_partial_padding": true,
-        "decoder_use_unvoiced_bias": false,
-        "ap_pred_log_f0": false,
-        "ap_use_unvoiced_bias": false,
-        "ap_use_voiced_embeddings": false,
-        "dur_model_config": {
+        "decoder_use_unvoiced_bias": true,
+        "ap_pred_log_f0": true,
+        "ap_use_unvoiced_bias": true,
+        "ap_use_voiced_embeddings": true,
+        "dur_model_config": null,
+        "f0_model_config": null,
+        "energy_model_config": null,
+        "v_model_config": {
             "name": "dap",
             "hparams": {
                 "n_speaker_dim": 16,
+                "take_log_of_input": false,
                 "bottleneck_hparams": {
                     "in_dim": 512,
                     "reduction_factor": 16,
                     "norm": "weightnorm",
                     "non_linearity": "relu"
                 },
-                "take_log_of_input": true,
                 "arch_hparams": {
                     "out_dim": 1,
                     "n_layers": 2,
                     "n_channels": 256,
                     "kernel_size": 3,
-                    "p_dropout": 0.25
+                    "p_dropout": 0.5,
+                    "lstm_type": "",
+                    "use_linear": 1
                 }
             }
-        },
-        "f0_model_config": null,
-        "energy_model_config": null,
-        "v_model_config": null
+        }
     }
 }

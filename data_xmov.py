@@ -260,7 +260,7 @@ class Data(torch.utils.data.Dataset):
     def get_text(self, text, language_id):
         # text = self.tp.encode_text(text)
         def _isprosody_mark(phoneme):
-            lista = ['#1', '#2', '#3', '#4', '/', '<k>', '<p>',
+            lista = ['#1', '#2', '#3', '#4', '/', '<k>', '<p>', '<g>',
                      ".", "。", ",", "，", "?", "？", "!", "！",
                      ":", "：", ";", "；", "、", "·", "…",
                      "—", "-", "|", "~", "'", "\"", "“", "”",
@@ -338,6 +338,10 @@ class Data(torch.utils.data.Dataset):
         return pho_ids, tone_ids, lang_ids
 
 
+    def id2phoneme(self, pho_id, tone_id, lang_id):
+        pass
+
+
     def get_attention_prior(self, n_tokens, n_frames):
         # cache the entire attn_prior by filename
         if self.use_attn_prior_masking:
@@ -361,6 +365,7 @@ class Data(torch.utils.data.Dataset):
     def __getitem__(self, index):
         data = self.data[index]
         audiopath, text = data['audiopath'], data['text']
+        phonemes = data['text']
         speaker_id = data['speaker']
         language_id = data['language']
         if data['lmdb_key'] is not None:
@@ -440,6 +445,7 @@ class Data(torch.utils.data.Dataset):
 
         return {'mel': mel,
                 'speaker_id': speaker_id,
+                'phos': phonemes,
                 'text_encoded': text_encoded,
                 'tone_id': tone_id,
                 'lang_id': lang_id,
@@ -516,6 +522,7 @@ class DataCollate():
         output_lengths = torch.LongTensor(len(batch))
         speaker_ids = torch.LongTensor(len(batch))
         audiopaths = []
+        phonelists = []
         for i in range(len(ids_sorted_decreasing)):
             mel = batch[ids_sorted_decreasing[i]]['mel']
             mel_padded[i, :, :mel.size(1)] = mel
@@ -538,7 +545,9 @@ class DataCollate():
             output_lengths[i] = mel.size(1)
             speaker_ids[i] = batch[ids_sorted_decreasing[i]]['speaker_id']
             audiopath = batch[ids_sorted_decreasing[i]]['audiopath']
+            phone_list = batch[ids_sorted_decreasing[i]]['phos']
             audiopaths.append(audiopath)
+            phonelists.append(phone_list)
             cur_attn_prior = batch[ids_sorted_decreasing[i]]['attn_prior']
             if cur_attn_prior is None:
                 attn_prior_padded = None
@@ -553,6 +562,7 @@ class DataCollate():
                 'input_lengths': input_lengths,
                 'output_lengths': output_lengths,
                 'audiopaths': audiopaths,
+                'phonelists': phonelists,
                 'attn_prior': attn_prior_padded,
                 'f0': f0_padded,
                 'p_voiced': p_voiced_padded,

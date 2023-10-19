@@ -42,6 +42,34 @@
                 "filelist": "trainset_LTTS.json",
                 "language": "0",
                 "lmdbpath": ""
+            },
+            "NTTS": {
+                "basedir": "/data/megastore/Datasets/55data/TTS/NTTS",
+                "audiodir": "Formatted",
+                "filelist": "trainset_NTTS.json",
+                "language": "0",
+                "lmdbpath": ""
+            },
+            "ENTTS": {
+                "basedir": "/data/megastore/Datasets/55data/TTS/ENTTS",
+                "audiodir": "Formatted",
+                "filelist": "trainset_ENTTS.json",
+                "language": "1",
+                "lmdbpath": ""
+            },
+            "MSTTS_CN": {
+                "basedir": "/data/megastore/Datasets/55data/TTS/MSTTS_CN",
+                "audiodir": "Formatted",
+                "filelist": "trainset_MSTTS_CN.json",
+                "language": "0",
+                "lmdbpath": ""
+            },
+            "MSTTS_EN": {
+                "basedir": "/data/megastore/Datasets/55data/TTS/MSTTS_EN",
+                "audiodir": "Formatted",
+                "filelist": "trainset_MSTTS_EN.json",
+                "language": "1",
+                "lmdbpath": ""
             }
         },
         "validation_files": {
@@ -50,6 +78,34 @@
                 "audiodir": "Formatted",
                 "filelist": "validset_LTTS.json",
                 "language": "0",
+                "lmdbpath": ""
+            },
+            "NTTS": {
+                "basedir": "/data/megastore/Datasets/55data/TTS/NTTS",
+                "audiodir": "Formatted",
+                "filelist": "validset_NTTS.json",
+                "language": "0",
+                "lmdbpath": ""
+            },
+            "ENTTS": {
+                "basedir": "/data/megastore/Datasets/55data/TTS/ENTTS",
+                "audiodir": "Formatted",
+                "filelist": "validset_ENTTS.json",
+                "language": "1",
+                "lmdbpath": ""
+            },
+            "MSTTS_CN": {
+                "basedir": "/data/megastore/Datasets/55data/TTS/MSTTS_CN",
+                "audiodir": "Formatted",
+                "filelist": "validset_MSTTS_CN.json",
+                "language": "0",
+                "lmdbpath": ""
+            },
+            "MSTTS_EN": {
+                "basedir": "/data/megastore/Datasets/55data/TTS/MSTTS_EN",
+                "audiodir": "Formatted",
+                "filelist": "validset_MSTTS_EN.json",
+                "language": "1",
                 "lmdbpath": ""
             }
         },
@@ -112,11 +168,11 @@
         "n_early_every": 2,
         "n_group_size": 2,
         "affine_model": "wavenet",
-        "include_modules": "decatndpm",
+        "include_modules": "decatn",
         "scaling_fn": "tanh",
         "matrix_decomposition": "LUS",
         "learn_alignments": true,
-        "use_speaker_emb_for_alignment": true,
+        "use_speaker_emb_for_alignment": false,
         "attn_straight_through_estimator": true,
         "use_context_lstm": true,
         "context_lstm_norm": "spectral",

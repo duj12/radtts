@@ -559,7 +559,8 @@ class RADTTS(torch.nn.Module):
               sigma_energy=0.8, token_dur_scaling=1.0, token_duration_max=100,
               speaker_id_text=None, speaker_id_attributes=None, dur=None,
               f0=None, energy_avg=None, voiced_mask=None, f0_mean=0.0,
-              f0_std=0.0, energy_mean=0.0, energy_std=0.0):
+              f0_std=0.0, energy_mean=0.0, energy_std=0.0,
+              mel_gt=None, attn_prior=None, in_lens=None, mel_lens=None):
         batch_size = text.shape[0]
         n_tokens = text.shape[1]
         spk_vec = self.encode_speaker(speaker_id)
@@ -569,14 +570,32 @@ class RADTTS(torch.nn.Module):
         if speaker_id_attributes is not None:
             spk_vec_attributes = self.encode_speaker(speaker_id_attributes)
 
-        txt_enc, txt_emb = self.encode_text(text, tone, lang, None)
+        txt_enc, txt_emb = self.encode_text(text, tone, lang, in_lens)
+
+        attn = None
+        if mel_gt is not None:
+            attn_mask = get_mask_from_lengths(in_lens)[..., None] == 0
+
+            text_embeddings_for_attn = txt_emb
+            if self.use_speaker_emb_for_alignment:
+                speaker_vecs_expd = spk_vec[:, :, None].expand(
+                    -1, -1, txt_emb.shape[2])
+                text_embeddings_for_attn = torch.cat(
+                    (text_embeddings_for_attn, speaker_vecs_expd.detach()), 1)
+
+            # attn_mask shld be 1 for unsd t-steps in text_enc_w_spkvec tensor
+            attn_soft, attn_logprob = self.attention(
+                mel_gt, text_embeddings_for_attn, mel_lens, attn_mask,
+                key_lens=in_lens, attn_prior=attn_prior)
+            attn = self.binarize_attention(attn_soft, in_lens, mel_lens)
+            attn_hard = attn
 
         if dur is None:
             # get token durations
             z_dur = torch.cuda.FloatTensor(batch_size, 1, n_tokens)
             z_dur = z_dur.normal_() * sigma_dur
 
-            dur = self.dur_pred_layer.infer(z_dur, txt_enc, spk_vec_text)
+            dur = self.dur_pred_layer.infer(z_dur, txt_enc, spk_vec_text, in_lens)
             if dur.shape[-1] < txt_enc.shape[-1]:
                 to_pad = txt_enc.shape[-1] - dur.shape[2]
                 pad_fn = nn.ReplicationPad1d((0, to_pad))
@@ -695,6 +714,8 @@ class RADTTS(torch.nn.Module):
 
         return {'mel': mel,
                 'dur': dur,
+                'lens': out_lens,
+                'attn': attn,
                 'f0': f0,
                 'energy_avg': energy_avg,
                 'voiced_mask': voiced_mask
