@@ -2,3 +2,11 @@
 #It is well known that deep generative models have a rich latent space.
 #We are the first generation to feel the effects of {K L AY1 M AH0 T} change and the last generation who can do something about it!
 ["L", "AE2", "B", "AA5", "#3", "，", "L", "AE2", "#1", "W", "AO3", "M", "EN5", "D", "AH5", "#2", "<p>", "AA1", "F", "EY1", "#1", "G", "EY3", "#1", "D", "AA4", "J", "IA1", "#1", "JH", "AN3", "SH", "IH4", "#1", "Y", "IH2", "X", "IA4", "AA5", "#3", "，", "J", "IOU4", "SH", "IH4", "#1", "Y", "IH2", "G", "AH5", "#1", "Q", "IOU1", "D", "AO1", "NG1", "J", "IH4", "#1", "W", "AE4", "CH", "UW1", "D", "AH5", "#1", "Y", "IH2", "G", "AH5", "#1", "N", "EY4", "D", "AA4", "D", "AH5", "#1", "X", "IAO4", "G", "UO3", "#4", "。", "Q", "IH2", "SH", "IH2", "#1", "N", "AN2", "SH", "AH1", "NG1", "#1", "Z", "UEI4", "CH", "AA2", "NG2", "CH", "UAN1", "#1", "D", "AH5", "HH", "UA4", "#2", "J", "IOU4", "SH", "IH4", "#1", "Y", "IH2", "G", "AH5", "#1", "W", "AE4", "T", "AW4", "L", "AH5", "#1", "D", "UEI4", "B", "UW5", "D", "UEI4", "#3", "，", "L", "IH3", "M", "IAN4", "#1", "CH", "UAN1", "#1", "Y", "IH2", "J", "IAN4", "#1", "W", "AO3", "M", "EN5", "#1", "HH", "UEI1", "S", "AH4", "D", "AH5", "#1", "W", "EY4", "Y", "IH1", "#4", "。"]|50|0|/data/megastore/Datasets/55data/TTS/LTTS/Formatted/ID_0/ZBM01_09_0001.wav
+data/test/human_align/ZBF01_09_3769.TextGrid|51|0|/data/megastore/Datasets/55data/TTS/LTTS/Formatted/ID_1/ZBF01_09_3769.wav
+data/test/human_align/ZBF02_15_0881.TextGrid|57|0|/data/megastore/Datasets/55data/TTS/LTTS/Formatted/ID_7/ZBF02_15_0881.wav
+data/test/human_align/ZBF03_15_0894.TextGrid|58|0|/data/megastore/Datasets/55data/TTS/LTTS/Formatted/ID_8/ZBF03_15_0894.wav
+data/test/human_align/ZBF04_15_0942.TextGrid|59|0|/data/megastore/Datasets/55data/TTS/LTTS/Formatted/ID_9/ZBF04_15_0942.wav
+data/test/human_align/ZBM01_09_3301.TextGrid|50|0|/data/megastore/Datasets/55data/TTS/LTTS/Formatted/ID_0/ZBM01_09_3301.wav
+data/test/human_align/ZBM02_15_99.TextGrid|52|0|/data/megastore/Datasets/55data/TTS/LTTS/Formatted/ID_2/ZBM02_15_99.wav
+data/test/human_align/ZBM03_15_99.TextGrid|53|0|/data/megastore/Datasets/55data/TTS/LTTS/Formatted/ID_3/ZBM03_15_99.wav
+data/test/human_align/ZBM04_15_0924.TextGrid|60|0|/data/megastore/Datasets/55data/TTS/LTTS/Formatted/ID_10/ZBM04_15_0924.wav

@@ -126,7 +126,7 @@ def infer(radtts_path, vocoder_path, vocoder_config_path, text_path, speaker,
         **dict((k, v) for k, v in data_config.items() if k not in ignore_keys))
 
     # Option 1: give test_files in configs
-    if 'validation_files' in data_config:
+    if 'test_files' in data_config:
         testdataloader = DataLoader(testset, num_workers=1, shuffle=False,
                               sampler=None, batch_size=16,
                               pin_memory=False, drop_last=False,
@@ -228,12 +228,17 @@ def infer(radtts_path, vocoder_path, vocoder_config_path, text_path, speaker,
     for i, text in enumerate(text_list):
         if text.startswith("#"):
             continue
+        print("processing: {}/{}: {}".format(i, len(text_list), text))
+
         text = text.split('|')
         spk = None
         lang_id = 0
         audiopath = None
         mel, attn_prior = None, None
         in_lens, out_lens = None, None
+        phos_list, phos_with_dur = None, None
+
+        # process each line
         if len(text) == 2:
             text, spk = text[0], text[1]
         elif len(text) == 3:
@@ -243,24 +248,46 @@ def infer(radtts_path, vocoder_path, vocoder_config_path, text_path, speaker,
             audio, sampling_rate = load_wav_to_torch(audiopath)
             mel_gt = testset.get_mel(audio)
             lang_id = int(lang_id)
-        if text.startswith('["') and text.endswith('"]'):
+
+        # process text
+        if text.startswith('["') and text.endswith('"]'):  # convert to list
             text = text[2:-2]
             text = text.split('", "')
+            phos_list = text
+        elif text.endswith('.TextGrid'):  # support textgrid input
+            from textgrid import TextGrid
+            # 创建TextGrid对象并加载文件
+            tg = TextGrid()
+            tg.read(text)
+
+            # 获取第2个Tier（音素信息在第2个Tier中）
+            tier = tg[1]
+            # 读取音素序列和时间戳
+            phos_list = []
+            phos_with_dur = []
+            for interval in tier:
+                item = {}
+                key = interval.mark
+                val = float(interval.maxTime) - float(interval.minTime)
+                item[key] = val
+                phos_list.append(key)
+                phos_with_dur.append(val)  # only store dur
+
         if mel_gt is not None:
-            attn_prior = testset.get_attention_prior(len(text), mel_gt.size(1))
             mel_gt = mel_gt.cuda()[None]
-            attn_prior = attn_prior.cuda()[None]
             in_lens = torch.LongTensor(1).cuda()
             out_lens = torch.LongTensor(1).cuda()
             for i in range(1):
-                in_lens[i] = len(text)
+                in_lens[i] = len(phos_list)
                 out_lens[i] = mel_gt.size(2)
+            attn_prior = testset.get_attention_prior(
+                in_lens[0].item(), out_lens[0].item())
+            attn_prior = attn_prior.cuda()[None]
         if spk is not None:
             speaker = spk
             speaker_id = testset.get_speaker_id(speaker).cuda()
             speaker_id_text, speaker_id_attributes = speaker_id, speaker_id
-        print("{}/{}: {}".format(i, len(text_list), text))
-        phos_list = text
+
         text, tone, lang = testset.get_text(phos_list, language_id=lang_id)
         text = text.cuda()[None]
         tone = tone.cuda()[None]
@@ -317,6 +344,14 @@ def infer(radtts_path, vocoder_path, vocoder_config_path, text_path, speaker,
                         get_and_save_TextGrid(dur_second, phos_list,
                                               filename=f"{output_dir}/"
                                                        f"{suffix_path}.json")
+
+                        if phos_with_dur is not None:  # measure the dur_pred
+                            assert len(phos_with_dur) == len(dur_second), \
+                                "duration of reference and prediction should be equal."
+                            total_shift = 0
+                            for (r,p) in zip(phos_with_dur, dur_second):
+                                total_shift += abs(r-p)
+                            print(f"total {len(dur_second)} duration shift of {suffix_path} is {total_shift}.")
 
             if plot:
                 fig, axes = plt.subplots(2, 1, figsize=(10, 6))
