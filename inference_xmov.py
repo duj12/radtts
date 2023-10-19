@@ -97,7 +97,7 @@ def infer(radtts_path, vocoder_path, vocoder_config_path, text_path, speaker,
           speaker_text, speaker_attributes, sigma, sigma_tkndur, sigma_f0,
           sigma_energy, f0_mean, f0_std, energy_mean, energy_std,
           token_dur_scaling, denoising_strength, n_takes, output_dir, use_amp,
-          plot, seed):
+          plot, seed, use_dp=False):
 
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
@@ -186,9 +186,14 @@ def infer(radtts_path, vocoder_path, vocoder_config_path, text_path, speaker,
                             data_config['sampling_rate'], audio_denoised)
 
                         if mel_gt is not None and outputs['attn'] is not None:
-                            attn = outputs['attn']
-                            durations = attn[j, 0].sum(0, keepdim=True)[0][:in_lens[j]]
-                            durations = (durations + 0.5).floor().int()
+
+                            if use_dp:  # do not use the attn from mel and text
+                                # use the duration predictor result
+                                durations = outputs['dur'][j]
+                            else:
+                                attn = outputs['attn']
+                                durations = attn[j, 0].sum(0, keepdim=True)[0]
+                                durations = (durations + 0.5).floor().int()
                             dur_second = durations * data_config[
                                 'hop_length'] / data_config['sampling_rate']
                             dur_second = list(dur_second.cpu().numpy())
@@ -335,9 +340,14 @@ def infer(radtts_path, vocoder_path, vocoder_config_path, text_path, speaker,
                         data_config['sampling_rate'], audio_denoised)
 
                     if mel_gt is not None and outputs['attn'] is not None:
-                        attn = outputs['attn']
-                        durations = attn[0, 0].sum(0, keepdim=True)[0]
-                        durations = (durations + 0.5).floor().int()
+                        if use_dp:  # do not use the attn from mel and text
+                            # use the duration predictor result
+                            durations = outputs['dur'][0]
+                        else:
+                            attn = outputs['attn']
+                            durations = attn[0, 0].sum(0, keepdim=True)[0]
+                            durations = (durations + 0.5).floor().int()
+
                         dur_second = durations * data_config['hop_length'] / data_config['sampling_rate']
                         dur_second = list(dur_second.cpu().numpy())
                         # phos_clear_list = clear_pho(phos_list)
@@ -421,6 +431,7 @@ if __name__ == "__main__":
     parser.add_argument("--n_takes", default=1, type=int)
     parser.add_argument("--use_amp", action="store_true")
     parser.add_argument("--plot", action="store_true")
+    parser.add_argument("--use_dp", action="store_true")
     parser.add_argument("--seed", default=1234, type=int)
     args = parser.parse_args()
 
@@ -443,4 +454,5 @@ if __name__ == "__main__":
           args.speaker_attributes, args.sigma, args.sigma_tkndur, args.sigma_f0,
           args.sigma_energy, args.f0_mean, args.f0_std, args.energy_mean,
           args.energy_std, args.token_dur_scaling, args.denoising_strength,
-          args.n_takes, args.output_dir, args.use_amp, args.plot, args.seed)
+          args.n_takes, args.output_dir, args.use_amp, args.plot, args.seed,
+          args.use_dp)
