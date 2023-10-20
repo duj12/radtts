@@ -44,7 +44,7 @@ fi
 
 # 训练全部数据的radtts模型
 if [ $stage -eq 3 ]; then
-  train_decoder=true
+  train_decoder=false
   if $train_decoder; then
     # 第一阶段，先只训练声学模型网络层, 至少200000步
     CUDA_VISIBLE_DEVICES=0 \
@@ -58,14 +58,14 @@ if [ $stage -eq 3 ]; then
       nohup python train_xmov.py \
       -c configs/config_xmov_alldata_radtts.json \
       -p train_config.output_directory=exp/radtts_xmov_alldata_s2 \
-      train_config.warmstart_checkpoint_path=exp/radtts_xmov_alldata_s1/model_200000 \
+      train_config.warmstart_checkpoint_path=exp/radtts_xmov_alldata_s1/model_480000 \
       model_config.include_modules=decatndpm >> train_radtts_xmov_alldata_s2.log 2>&1 &
   fi
 fi
 
 # 训练全部数据集的radtts++模型
 if [ $stage -eq 4 ]; then
-  train_decoder=true
+  train_decoder=false
   if $train_decoder; then
     # 第一阶段，先只训练声学模型网络层, 至少200000步
     CUDA_VISIBLE_DEVICES=1 \
@@ -78,7 +78,7 @@ if [ $stage -eq 4 ]; then
       nohup python train_xmov.py \
       -c configs/config_xmov_alldata_agap.json \
       -p train_config.output_directory=exp/radtts++_xmov_alldata_s2_agap \
-      train_config.warmstart_checkpoint_path=exp/radtts++_xmov_alldata_s1/model_200000 >> train_radtts++xmov_alldata_s2.log 2>&1 &
+      train_config.warmstart_checkpoint_path=exp/radtts++_xmov_alldata_s1/model_480000 >> train_radtts++xmov_alldata_s2.log 2>&1 &
   fi
 fi
 

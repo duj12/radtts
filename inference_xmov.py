@@ -18,6 +18,31 @@ from hifigan_xmov import Generator
 from hifigan_env import AttrDict
 from hifigan_denoiser import Denoiser
 
+TextGridFilterSymbol={
+    "#1 <p>", "#2 <p>", "#3 <p>", "#4 <p>", "",
+}
+SPECIAL_PHONEMES_SINGLE=[
+    "AA5", "AH5", "EN5", "EY5", "AE5",
+    "AA7", "AH7", "EN7", "EY7", "AE7",
+    "AA8", "AH8", "EN8", "EY8", "AE8",
+    "AA9", "AH9", "EN9", "EY9", "AE9",
+    "AA10", "AH10", "EN10", "EY10", "AE10",
+    "AA11", "AH11", "EN11", "EY11", "AE11",
+    "AA12", "AH12", "EN12", "EY12", "AE12",
+    "AA13", "AH13", "EN13", "EY13", "AE13",
+    "HAA15", "HEE15", "HII15", "HOO15", "HNN15", "HYY15"
+]
+SPECIAL_PHONEMES_DOUBLE=[
+    ["L", "AA5"],["N", "AA5"],["N", "AH5"],["Y", "AO5"],["Y", "OW5"],["W", "AA5"],["L", "EY5"],
+    ["L", "AA7"],["N", "AA7"],["N", "AH7"],["Y", "AO7"],["Y", "OW7"],["W", "AA7"],["L", "EY7"],
+    ["L", "AA8"],["N", "AA8"],["N", "AH8"],["Y", "AO8"],["Y", "OW8"],["W", "AA8"],["L", "EY8"],
+    ["L", "AA9"],["N", "AA9"],["N", "AH9"],["Y", "AO9"],["Y", "OW9"],["W", "AA9"],["L", "EY9"],
+    ["L", "AA10"],["N", "AA10"],["N", "AH10"],["Y", "AO10"],["Y", "OW10"],["W", "AA10"],["L", "EY10"],
+    ["L", "AA11"],["N", "AA11"],["N", "AH11"],["Y", "AO11"],["Y", "OW11"],["W", "AA11"],["L", "EY11"],
+    ["L", "AA12"],["N", "AA12"],["N", "AH12"],["Y", "AO12"],["Y", "OW12"],["W", "AA12"],["L", "EY12"],
+    ["L", "AA13"],["N", "AA13"],["N", "AH13"],["Y", "AO13"],["Y", "OW13"],["W", "AA13"],["L", "EY13"],
+]
+
 
 def lines_to_list(filename):
     """
@@ -97,7 +122,7 @@ def infer(radtts_path, vocoder_path, vocoder_config_path, text_path, speaker,
           speaker_text, speaker_attributes, sigma, sigma_tkndur, sigma_f0,
           sigma_energy, f0_mean, f0_std, energy_mean, energy_std,
           token_dur_scaling, denoising_strength, n_takes, output_dir, use_amp,
-          plot, seed, use_dp=False):
+          plot, seed, use_dp=False, do_skip=False):
 
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
@@ -200,7 +225,7 @@ def infer(radtts_path, vocoder_path, vocoder_config_path, text_path, speaker,
                             # phos_clear_list = clear_pho(phos_list)
                             get_and_save_TextGrid(dur_second, phos_list,
                                                   filename=f"{output_dir}/"
-                                                           f"{suffix_path}.json")
+                                                           f"{suffix_path}.TextGrid")
 
             if plot:
                 fig, axes = plt.subplots(2, 1, figsize=(10, 6))
@@ -230,6 +255,8 @@ def infer(radtts_path, vocoder_path, vocoder_config_path, text_path, speaker,
             speaker_attributes).cuda()
 
     # single batch iter on text_list
+    all_num, all_shift, ave_shift = 0, 0, 0
+    special_all_num, special_all_shift, special_ave_shift = 0, 0, 0
     for i, text in enumerate(text_list):
         if text.startswith("#"):
             continue
@@ -273,6 +300,8 @@ def infer(radtts_path, vocoder_path, vocoder_config_path, text_path, speaker,
             for interval in tier:
                 item = {}
                 key = interval.mark
+                if key in TextGridFilterSymbol:
+                    continue
                 val = float(interval.maxTime) - float(interval.minTime)
                 item[key] = val
                 phos_list.append(key)
@@ -353,15 +382,33 @@ def infer(radtts_path, vocoder_path, vocoder_config_path, text_path, speaker,
                         # phos_clear_list = clear_pho(phos_list)
                         get_and_save_TextGrid(dur_second, phos_list,
                                               filename=f"{output_dir}/"
-                                                       f"{suffix_path}.json")
+                                                       f"{suffix_path}.TextGrid")
 
                         if phos_with_dur is not None:  # measure the dur_pred
                             assert len(phos_with_dur) == len(dur_second), \
                                 "duration of reference and prediction should be equal."
-                            total_shift = 0
-                            for (r,p) in zip(phos_with_dur, dur_second):
+                            total_shift, total_len = 0, 0
+                            s_shift, s_num = 0, 0
+                            for i, (pho, r, p) in enumerate(zip(phos_list, phos_with_dur, dur_second)):
+                                if pho.startswith('#') and do_skip:
+                                    continue
+                                if i > 0 and [phos_list[i-1], phos_list[i]] in SPECIAL_PHONEMES_DOUBLE:
+                                    print(phos_list[i - 1], phos_list[i])
+                                    s_shift += abs(r-p)
+                                    s_shift += abs(phos_with_dur[i-1] - dur_second[i-1])
+                                    s_num += 2
+                                elif phos_list[i] in SPECIAL_PHONEMES_SINGLE:
+                                    print(phos_list[i])
+                                    s_shift += abs(r - p)
+                                    s_num += 1
                                 total_shift += abs(r-p)
-                            print(f"total {len(dur_second)} duration shift of {suffix_path} is {total_shift}.")
+                                total_len += 1
+                            print(f"total {total_len} duration shift of {suffix_path} is {total_shift}.")
+                            print(f"total {s_num} special phonemes duration shift is {s_shift}.")
+                            all_shift += total_shift
+                            all_num += total_len
+                            special_all_num += s_num
+                            special_all_shift += s_shift
 
             if plot:
                 fig, axes = plt.subplots(2, 1, figsize=(10, 6))
@@ -373,28 +420,46 @@ def infer(radtts_path, vocoder_path, vocoder_config_path, text_path, speaker,
                 fig.savefig("{}/{}_features.png".format(output_dir, suffix_path))
                 plt.close('all')
 
+    if all_num != 0:
+        ave_shift = all_shift / all_num
+        print(f"total {all_num} duration shift is {all_shift}. "
+              f"average is {ave_shift}")
+    if special_all_num != 0:
+        special_ave_shift = special_all_shift / special_all_num
+        print(
+            f"total {special_all_num} special phonemes duration shift is {special_all_shift}. "
+            f"average is {special_ave_shift}")
 
-# 存储时间戳 Json
-def get_and_save_TextGrid(dur_ts, pho, filename="alignment.json"):
+
+# 存储时间戳为TextGrid
+def get_and_save_TextGrid(dur_ts, pho, filename, dump_json=False):
+    from textgrid import TextGrid, IntervalTier
     time_range = {}
     beginning = 0
-
+    # 创建 TextGrid 对象
+    tg = TextGrid()
+    # 创建 IntervalTier 对象
+    interval_tier = IntervalTier(name='phones')
     for i in range(len(dur_ts)):
         pho_item = pho[i]
 
         ending = beginning + dur_ts[i]
+        start_time = beginning
+        end_time = ending
+        label = pho_item
+        interval_tier.add(start_time, end_time, label)
         time_range[i + 1] = {"pho": pho_item,
-                             "xmin": f"{beginning:.3f}",
-                             "xmax": f"{ending:.3f}",
-                             "dur": f"{dur_ts[i]:.3f}",
-                             }
+                             "xmin": beginning,
+                             "xmax": ending,
+                             "dur": dur_ts[i]}
         beginning = ending
 
-    with open(filename, "w") as write_file:
-        json.dump(time_range,
-                  write_file,
-                  indent=4,
-                  ensure_ascii=False)
+    tg.append(interval_tier)
+    tg.write(filename)
+    if dump_json:
+        json_name = filename.replace(".TextGrid", ".json")
+        with open(json_name, "w") as write_file:
+            json.dump(time_range, write_file, indent=4)
 
 
 # 清理 Phonemes 中的分词和韵律信息
@@ -432,6 +497,7 @@ if __name__ == "__main__":
     parser.add_argument("--use_amp", action="store_true")
     parser.add_argument("--plot", action="store_true")
     parser.add_argument("--use_dp", action="store_true")
+    parser.add_argument("--do_skip", action="store_true")
     parser.add_argument("--seed", default=1234, type=int)
     args = parser.parse_args()
 
@@ -455,4 +521,4 @@ if __name__ == "__main__":
           args.sigma_energy, args.f0_mean, args.f0_std, args.energy_mean,
           args.energy_std, args.token_dur_scaling, args.denoising_strength,
           args.n_takes, args.output_dir, args.use_amp, args.plot, args.seed,
-          args.use_dp)
+          args.use_dp, args.do_skip)
