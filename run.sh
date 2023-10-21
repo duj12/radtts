@@ -84,7 +84,7 @@ fi
 
 # 训练全部数据的radtts模型, 对齐不用到spk_emb, 为了处理未知说话人，只根据text_emb对齐
 if [ $stage -eq 5 ]; then
-  train_decoder=true
+  train_decoder=false
   if $train_decoder; then
     # 第一阶段，先只训练声学模型网络层, 至少200000步
     CUDA_VISIBLE_DEVICES=6 \
@@ -98,14 +98,14 @@ if [ $stage -eq 5 ]; then
       nohup python train_xmov.py \
       -c configs/config_xmov_alldata_radtts_alnwospk.json \
       -p train_config.output_directory=exp/radtts_xmov_alldata_s2_alnwospk \
-      train_config.warmstart_checkpoint_path=exp/radtts_xmov_alldata_s1_alnwospk/model_200000 \
+      train_config.warmstart_checkpoint_path=exp/radtts_xmov_alldata_s1_alnwospk/model_500000 \
       model_config.include_modules=decatndpm >> train_radtts_xmov_alldata_s2_alnwospk.log 2>&1 &
   fi
 fi
 
 # 训练全部数据集的radtts++模型, 对齐不用到spk_emb, 为了处理未知说话人，只根据text_emb对齐
 if [ $stage -eq 6 ]; then
-  train_decoder=true
+  train_decoder=false
   if $train_decoder; then
     # 第一阶段，先只训练声学模型网络层, 至少200000步
     CUDA_VISIBLE_DEVICES=7 \
@@ -116,9 +116,9 @@ if [ $stage -eq 6 ]; then
     # 第二阶段，基于第一阶段已经训练差不多的网络，再训练时长预测网络,f0和energy等属性预测网络
     CUDA_VISIBLE_DEVICES=7 \
       nohup python train_xmov.py \
-      -c configs/config_xmov_alldata_agap.json \
-      -p train_config.output_directory=exp/radtts++_xmov_alldata_s2_agap \
-      train_config.warmstart_checkpoint_path=exp/radtts++_xmov_alldata_s1/model_200000 >> train_radtts++xmov_alldata_s2.log 2>&1 &
+      -c configs/config_xmov_alldata_agap_alnwospk.json \
+      -p train_config.output_directory=exp/radtts++_xmov_alldata_s2_agap_alnwospk \
+      train_config.warmstart_checkpoint_path=exp/radtts++_xmov_alldata_s1_alnwospk/model_500000 >> train_radtts++xmov_alldata_s2_alnwospk.log 2>&1 &
   fi
 fi
 
