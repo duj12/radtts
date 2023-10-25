@@ -19,7 +19,7 @@ from hifigan_env import AttrDict
 from hifigan_denoiser import Denoiser
 
 TextGridFilterSymbol={
-    "#1 <p>", "#2 <p>", "#3 <p>", "#4 <p>", "",
+    "",
 }
 SPECIAL_PHONEMES_SINGLE=[
     "AA5", "AH5", "EN5", "EY5", "AE5",

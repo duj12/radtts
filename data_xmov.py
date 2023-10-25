@@ -254,6 +254,11 @@ class Data(torch.utils.data.Dataset):
     def get_speaker_id(self, speaker):
         if self.speaker_map is not None and speaker in self.speaker_map:
             speaker = self.speaker_map[speaker]
+        if speaker not in self.speaker_ids:
+            not_exist_spk = speaker
+            speaker = list(self.speaker_ids.keys())[0]
+            print(f"the speaker {not_exist_spk} doesn't exist in training data,"
+                  f"we map it into speaker {speaker}")
 
         return torch.LongTensor([self.speaker_ids[speaker]])
 
