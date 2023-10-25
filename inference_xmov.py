@@ -21,6 +21,9 @@ from hifigan_denoiser import Denoiser
 TextGridFilterSymbol={
     "",
 }
+LAUGH_PHONEMES_SINGLE=[
+    "HHH15", "AAA15", "EEE15", "III15", "OOO15", "NNN15", "YYY15"
+]
 SPECIAL_PHONEMES_SINGLE=[
     "AA5", "AH5", "EN5", "EY5", "AE5",
     "AA7", "AH7", "EN7", "EY7", "AE7",
@@ -30,7 +33,6 @@ SPECIAL_PHONEMES_SINGLE=[
     "AA11", "AH11", "EN11", "EY11", "AE11",
     "AA12", "AH12", "EN12", "EY12", "AE12",
     "AA13", "AH13", "EN13", "EY13", "AE13",
-    "HAA15", "HEE15", "HII15", "HOO15", "HNN15", "HYY15"
 ]
 SPECIAL_PHONEMES_DOUBLE=[
     ["L", "AA5"],["N", "AA5"],["N", "AH5"],["Y", "AO5"],["Y", "OW5"],["W", "AA5"],["L", "EY5"],
@@ -257,6 +259,7 @@ def infer(radtts_path, vocoder_path, vocoder_config_path, text_path, speaker,
     # single batch iter on text_list
     all_num, all_shift, ave_shift = 0, 0, 0
     special_all_num, special_all_shift, special_ave_shift = 0, 0, 0
+    laugh_all_num, laugh_all_shift, laugh_ave_shift = 0, 0, 0
     for i, text in enumerate(text_list):
         if text.startswith("#"):
             continue
@@ -355,7 +358,7 @@ def infer(radtts_path, vocoder_path, vocoder_config_path, text_path, speaker,
 
                     if audiopath is not None:
                         suffix_path = audiopath.split('/')
-                        path_len = min(len(suffix_path), 4)
+                        path_len = min(len(suffix_path), 1)
                         suffix_path = suffix_path[-path_len:]
                         suffix_path = '_'.join(suffix_path).replace('.wav','')
                     else:
@@ -389,6 +392,7 @@ def infer(radtts_path, vocoder_path, vocoder_config_path, text_path, speaker,
                                 "duration of reference and prediction should be equal."
                             total_shift, total_len = 0, 0
                             s_shift, s_num = 0, 0
+                            l_shift, l_num = 0, 0
                             for i, (pho, r, p) in enumerate(zip(phos_list, phos_with_dur, dur_second)):
                                 if pho.startswith('#') and do_skip:
                                     continue
@@ -401,14 +405,22 @@ def infer(radtts_path, vocoder_path, vocoder_config_path, text_path, speaker,
                                     print(phos_list[i])
                                     s_shift += abs(r - p)
                                     s_num += 1
+                                elif phos_list[i] in LAUGH_PHONEMES_SINGLE:
+                                    print(phos_list[i])
+                                    l_shift += abs(r - p)
+                                    l_num += 1
                                 total_shift += abs(r-p)
                                 total_len += 1
+
                             print(f"total {total_len} duration shift of {suffix_path} is {total_shift}.")
                             print(f"total {s_num} special phonemes duration shift is {s_shift}.")
+                            print(f"total {l_num} laugh phonemes duration shift is {l_shift}.")
                             all_shift += total_shift
                             all_num += total_len
                             special_all_num += s_num
                             special_all_shift += s_shift
+                            laugh_all_num += l_num
+                            laugh_all_shift += l_shift
 
             if plot:
                 fig, axes = plt.subplots(2, 1, figsize=(10, 6))
@@ -429,6 +441,11 @@ def infer(radtts_path, vocoder_path, vocoder_config_path, text_path, speaker,
         print(
             f"total {special_all_num} special phonemes duration shift is {special_all_shift}. "
             f"average is {special_ave_shift}")
+    if laugh_all_num != 0:
+        laugh_ave_shift = laugh_all_shift / laugh_all_num
+        print(
+            f"total {laugh_all_num} laugh phonemes duration shift is {laugh_all_shift}. "
+            f"average is {laugh_ave_shift}")
 
 
 # 存储时间戳为TextGrid
