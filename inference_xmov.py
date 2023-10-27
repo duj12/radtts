@@ -124,7 +124,7 @@ def infer(radtts_path, vocoder_path, vocoder_config_path, text_path, speaker,
           speaker_text, speaker_attributes, sigma, sigma_tkndur, sigma_f0,
           sigma_energy, f0_mean, f0_std, energy_mean, energy_std,
           token_dur_scaling, denoising_strength, n_takes, output_dir, use_amp,
-          plot, seed, use_dp=False, do_skip=False):
+          plot, seed, use_dp=False, do_skip=False, add_p_before_haha=False):
 
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
@@ -310,25 +310,35 @@ def infer(radtts_path, vocoder_path, vocoder_config_path, text_path, speaker,
                 phos_list.append(key)
                 phos_with_dur.append(val)  # only store dur
 
+        if spk is not None:
+            speaker = spk
+            speaker_id = testset.get_speaker_id(speaker).cuda()
+            speaker_id_text, speaker_id_attributes = speaker_id, speaker_id
+        if add_p_before_haha:
+            phos_list_add_p, add_p_pos = [], []
+            for p in phos_list:
+                phos_list_add_p.append(p)
+                add_p_pos.append(0)
+                if p in LAUGH_PHONEMES_SINGLE:
+                    phos_list_add_p.append("/")
+                    add_p_pos.append(1)
+            text, tone, lang = testset.get_text(phos_list_add_p, language_id=lang_id)
+        else:
+            text, tone, lang = testset.get_text(phos_list, language_id=lang_id)
+        text = text.cuda()[None]
+        tone = tone.cuda()[None]
+        lang = lang.cuda()[None]
+
         if mel_gt is not None:
             mel_gt = mel_gt.cuda()[None]
             in_lens = torch.LongTensor(1).cuda()
             out_lens = torch.LongTensor(1).cuda()
             for i in range(1):
-                in_lens[i] = len(phos_list)
+                in_lens[i] = text.size(1)
                 out_lens[i] = mel_gt.size(2)
             attn_prior = testset.get_attention_prior(
                 in_lens[0].item(), out_lens[0].item())
             attn_prior = attn_prior.cuda()[None]
-        if spk is not None:
-            speaker = spk
-            speaker_id = testset.get_speaker_id(speaker).cuda()
-            speaker_id_text, speaker_id_attributes = speaker_id, speaker_id
-
-        text, tone, lang = testset.get_text(phos_list, language_id=lang_id)
-        text = text.cuda()[None]
-        tone = tone.cuda()[None]
-        lang = lang.cuda()[None]
 
         for take in range(n_takes):
             with amp.autocast(use_amp):
@@ -383,6 +393,15 @@ def infer(radtts_path, vocoder_path, vocoder_config_path, text_path, speaker,
                         dur_second = durations * data_config['hop_length'] / data_config['sampling_rate']
                         dur_second = list(dur_second.cpu().numpy())
                         # phos_clear_list = clear_pho(phos_list)
+                        if add_p_before_haha:
+                            dur_second_without_p = []
+                            for i, d in enumerate(dur_second):
+                                if add_p_pos[i] == 0:
+                                    dur_second_without_p.append(d)
+                                # elif add_p_pos[i] == 1:
+                                #     dur_second_without_p[-1] += d
+                            dur_second = dur_second_without_p
+
                         get_and_save_TextGrid(dur_second, phos_list,
                                               filename=f"{output_dir}/"
                                                        f"{suffix_path}.TextGrid")
@@ -515,6 +534,7 @@ if __name__ == "__main__":
     parser.add_argument("--plot", action="store_true")
     parser.add_argument("--use_dp", action="store_true")
     parser.add_argument("--do_skip", action="store_true")
+    parser.add_argument("--add_p_before_haha", action="store_true")
     parser.add_argument("--seed", default=1234, type=int)
     args = parser.parse_args()
 
@@ -538,4 +558,4 @@ if __name__ == "__main__":
           args.sigma_energy, args.f0_mean, args.f0_std, args.energy_mean,
           args.energy_std, args.token_dur_scaling, args.denoising_strength,
           args.n_takes, args.output_dir, args.use_amp, args.plot, args.seed,
-          args.use_dp, args.do_skip)
+          args.use_dp, args.do_skip, args.add_p_before_haha)

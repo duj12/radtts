@@ -256,7 +256,10 @@ class Data(torch.utils.data.Dataset):
             speaker = self.speaker_map[speaker]
         if speaker not in self.speaker_ids:
             not_exist_spk = speaker
-            speaker = list(self.speaker_ids.keys())[0]
+            if "51" in self.speaker_ids:
+                speaker = '51'    # default spk_id 51
+            else:
+                speaker = list(self.speaker_ids.keys())[0]   # the first spk
             print(f"the speaker {not_exist_spk} doesn't exist in training data,"
                   f"we map it into speaker {speaker}")
 
