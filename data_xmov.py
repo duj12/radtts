@@ -52,6 +52,7 @@ class Data(torch.utils.data.Dataset):
         self.combine_speaker_and_emotion = combine_speaker_and_emotion
         self.max_wav_value = max_wav_value
         self.audio_lmdb_dict = {}  # dictionary of lmdbs for audio data
+        self.spk2utt = {}
         self.data = self.load_data(datasets)
         self.distance_tx_unvoiced = False
         if 'distance_tx_unvoiced' in kwargs.keys():
@@ -129,6 +130,8 @@ class Data(torch.utils.data.Dataset):
         if 'speaker_map' in kwargs:
             self.speaker_map = kwargs['speaker_map']
 
+
+
     def load_data(self, datasets, split='|'):
         dataset = []
         for dset_name, dset_dict in datasets.items():
@@ -151,12 +154,15 @@ class Data(torch.utils.data.Dataset):
             for speaker, info in data.items():
                 spk, sid = speaker.split("|")
                 total_dur, filelists = info
+                if sid not in self.spk2utt:
+                    self.spk2utt[sid] = []
                 for filelist in filelists:
                     file_name, duration, sequence = filelist[0:3]
                     emotion = 'other' if len(filelist) == 3 else filelist[3]
                     text = sequence['text']
                     file_name = f"{spk}/{file_name}.wav"
                     audiopath = os.path.join(wav_folder, file_name)
+                    self.spk2utt[sid].append(audiopath)
                     if not os.path.exists(audiopath):
                         print(f"{audiopath} not exist, jump this sample.")
                         continue

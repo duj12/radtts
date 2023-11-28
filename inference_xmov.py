@@ -380,6 +380,8 @@ def infer(radtts_path, vocoder_path, vocoder_config_path, text_path, speaker,
                     write("{}/{}_denoised_{}.wav".format(
                         output_dir, suffix_path, denoising_strength),
                         data_config['sampling_rate'], audio_denoised)
+                    write("{}/{}.wav".format(output_dir, suffix_path),
+                          data_config['sampling_rate'], audio)
 
                     if mel_gt is not None and outputs['attn'] is not None:
                         if use_dp:  # do not use the attn from mel and text

@@ -19,7 +19,9 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 import torch
+import modules
 from torch import nn
+from torch.nn import functional as F
 from common import Encoder, LengthRegulator, ConvAttention
 from common import Invertible1x1ConvLUS, Invertible1x1Conv
 from common import AffineTransformationLayer, LinearNorm, ExponentialClass
@@ -57,6 +59,152 @@ class FlowStep(nn.Module):
             z, log_det_W = self.invtbl_conv(z)
             z, log_s = self.affine_tfn(z, context, seq_lens=seq_lens)
             return z, log_det_W, log_s
+
+
+class StyleEncoder(nn.Module):
+    ''' Mel StyleEncoder, extract style embedding from Mels.
+    refer to Meta-StyleSpeech: https://arxiv.org/pdf/2106.03153.pdf
+    unlike GST's ref encoder, we use self attention to extract style
+    '''
+
+    def __init__(self, in_dim, style_hidden=128, style_vector_dim=128,
+                 style_kernel_size=5, style_head=4, dropout=0.1):
+        super(StyleEncoder, self).__init__()
+        self.in_dim = in_dim
+        self.hidden_dim = style_hidden
+        self.out_dim = style_vector_dim
+        self.kernel_size = style_kernel_size
+        self.n_head = style_head
+        self.dropout = dropout
+
+        self.spectral = nn.Sequential(
+            modules.LinearNorm(self.in_dim, self.hidden_dim),
+            modules.Mish(),
+            nn.Dropout(self.dropout),
+            modules.LinearNorm(self.hidden_dim, self.hidden_dim),
+            modules.Mish(),
+            nn.Dropout(self.dropout)
+        )
+
+        self.temporal = nn.Sequential(
+            modules.Conv1dGLU(self.hidden_dim, self.hidden_dim,
+                              self.kernel_size, self.dropout),
+            modules.Conv1dGLU(self.hidden_dim, self.hidden_dim,
+                              self.kernel_size, self.dropout),
+        )
+
+        self.slf_attn = modules.MultiHeadAttention(
+            self.n_head, self.hidden_dim, self.hidden_dim // self.n_head,
+            self.hidden_dim // self.n_head, self.dropout)
+        self.fc = modules.LinearNorm(self.hidden_dim, self.out_dim)
+
+
+    def temporal_avg_pool(self, x, mask=None):
+        if mask is None:
+            out = torch.mean(x, dim=1)
+        else:
+            len_ = (~mask).sum(dim=1).unsqueeze(1)
+            x = x.masked_fill(mask.unsqueeze(-1), 0)
+            x = x.sum(dim=1)
+            out = torch.div(x, len_)
+        return out
+
+    def forward(self, x, mask=None):
+        """
+        :param x:  B, T, D
+        :param mask:  [[1,1,1,1,1,...0,0,0],...]
+        :return: style vector B, D
+        """
+        max_len = x.shape[1]
+        if mask is not None:
+            mask = (mask.int() == 0).squeeze(1)
+            slf_attn_mask = mask.unsqueeze(1).expand(-1, max_len, -1)
+        else:
+            slf_attn_mask = None
+        # spectral
+        x = self.spectral(x)
+        # temporal
+        x = x.transpose(1, 2)
+        x = self.temporal(x)
+        x = x.transpose(1, 2)
+        # self-attention
+        if mask is not None:
+            x = x.masked_fill(mask.unsqueeze(-1), 0)
+        x, _ = self.slf_attn(x, mask=slf_attn_mask)
+        # fc
+        x = self.fc(x)
+        # temoral average pooling
+        w = self.temporal_avg_pool(x, mask=mask)
+
+        return w
+
+
+class GlobalStyleTokens(nn.Module):
+    """
+    refer to GST https://arxiv.org/abs/1803.09017
+    https://github.com/KinglittleQ/GST-Tacotron/blob/master/GST.py
+    Style embedding -> Attention to Tokens -> Final Style Embedding
+
+    TODO: Add regularization to minimize the tokens' similarity.
+    """
+    def __init__(self, token_num=128, embed_dim=128, num_heads=4):
+
+        super().__init__()
+        self.embed = nn.Parameter(torch.FloatTensor(
+            token_num, embed_dim // num_heads))
+        d_q = embed_dim
+        d_k = embed_dim // num_heads  # we assign smaller vectors in dimension
+
+        self.attention = modules.MultiHeadAttention_GivenK(
+            query_dim=d_q, key_dim=d_k,
+            num_units=embed_dim, num_heads=num_heads)
+
+        nn.init.normal_(self.embed, mean=0, std=0.5)
+
+    def forward(self, inputs):
+        N = inputs.size(0)
+        query = inputs.unsqueeze(1)  # [N, 1, E]
+        # [N, token_num, E // num_heads]
+        keys = F.tanh(self.embed).unsqueeze(0).expand(N, -1, -1)
+        style_embed = self.attention(query, keys)
+
+        return style_embed
+
+
+class StyleFuser(nn.Module):
+    def __init__(self, feat_dim, style_dim, fuse_type="Add"):
+        super().__init__()
+        self.fuse_type = fuse_type
+        if fuse_type == "Add":
+            self.style_fuser = nn.Linear(style_dim, feat_dim, bias=False)
+        elif fuse_type == "Concat":
+            self.style_fuser = nn.Linear(
+                style_dim+feat_dim, feat_dim, bias=False)
+        elif fuse_type == "AdaLN":
+            self.style_fuser = modules.StyleAdaptiveLayerNorm(
+                feat_dim, style_dim)
+        else:
+            raise NotImplementedError(f"fuse type {fuse_type} not support yet.")
+
+    def forward(self, input_feat, style_vector):
+        """
+        :param input_feat: B, T, D1
+        :param style_vector: B, 1, D2
+        :return:  B, T, D1
+        """
+        T = input_feat.size(1)
+        if self.fuse_type == "Add":
+            style_vector = self.style_fuser(style_vector).repeat(1, T, 1)
+            output_feat = input_feat + style_vector
+        elif self.fuse_type == "Concat":
+            # fuse gst into prior, by concat and affine.
+            style_vector = style_vector.repeat(1, T, 1)
+            x_with_gst = torch.concat((input_feat, style_vector), dim=2)
+            output_feat = self.style_fuser(x_with_gst)
+        elif self.fuse_type == "AdaLN":
+            output_feat = self.style_fuser(input_feat, style_vector)
+
+        return output_feat
 
 
 class RADTTS(torch.nn.Module):
