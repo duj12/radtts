@@ -10,7 +10,7 @@ from torch.cuda import amp
 from scipy.io.wavfile import write
 
 from radtts_xmov import RADTTS
-from data_xmov import Data, DataCollate, load_wav_to_torch
+from data_xmov import Data, DataCollate
 from torch.utils.data import DataLoader
 from common import update_params
 
@@ -81,6 +81,7 @@ def load_vocoder(vocoder_path, config_path, to_cuda=True):
         vocoder.cuda()
         denoiser.cuda()
     vocoder.eval()
+    vocoder.remove_weight_norm()
     denoiser.eval()
 
     return vocoder, denoiser

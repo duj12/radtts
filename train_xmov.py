@@ -29,7 +29,7 @@ from torch.utils.tensorboard import SummaryWriter
 from torch.cuda import amp
 from radam import RAdam
 from loss import RADTTSLoss, AttentionBinarizationLoss
-from radtts_xmov import RADTTS
+from radtts_xmov import RADTTS, StyleTTS
 from data_xmov import Data, DataCollate
 from plotting_utils import plot_alignment_to_numpy
 from common import update_params
@@ -277,15 +277,18 @@ def compute_validation_loss(iteration, model, criterion, valset, collate_fn,
                                 tone[0:1], lang[0:1], 0.8,
                                 dur=durations, f0=None, energy_avg=None,
                                 voiced_mask=None, sigma_f0=attribute_sigma,
-                                sigma_energy=attribute_sigma)
+                                sigma_energy=attribute_sigma, in_lens=in_lens[0:1],
+                                mel_gt=mel[0:1], mel_lens=out_lens[0:1])
                         else:
                             model_output = model.infer(
                                 speaker_ids[0:1], text[0:1],
                                 tone[0:1], lang[0:1], 0.8,
                                 dur=durations, f0=f0[0:1, :durations.sum()],
                                 energy_avg=energy_avg[0:1, :durations.sum()],
-                                voiced_mask=voiced_mask[0:1, :durations.sum()])
+                                voiced_mask=voiced_mask[0:1, :durations.sum()],
+                                mel_gt=mel[0:1], mel_lens=out_lens[0:1])
                     except:
+                        # raise RuntimeError("inference error, you need to check inference code.")
                         print("Instability or issue occured during inference, skipping sample generation for TB logger")
                         continue
                     mels = model_output['mel']
@@ -332,7 +335,7 @@ def train(n_gpus, rank, output_directory, epochs, optim_algo, learning_rate,
         loss_weights=loss_weights
     )
     attention_kl_loss = AttentionBinarizationLoss()
-    model = RADTTS(**model_config).cuda()
+    model = globals()[model_config['model_type']](**model_config).cuda()
 
     print("Initializing {} optimizer".format(optim_algo))
     if len(finetune_layers):

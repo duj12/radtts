@@ -10,6 +10,7 @@ from scipy.io.wavfile import read
 from audio_processing import TacotronSTFT
 from tts_text_processing.text_processing import TextProcessing
 from scipy.stats import betabinom
+import librosa
 from librosa import pyin
 from common import update_params
 from scipy.ndimage import distance_transform_edt as distance_transform
@@ -27,12 +28,6 @@ def beta_binomial_prior_distribution(phoneme_count, mel_count,
         mel_i_prob = rv.pmf(x)
         mel_text_probs.append(mel_i_prob)
     return torch.tensor(np.array(mel_text_probs))
-
-
-def load_wav_to_torch(full_path):
-    """ Loads wavdata into torch array """
-    sampling_rate, data = read(full_path)
-    return torch.from_numpy(np.array(data)).float(), sampling_rate
 
 
 class Data(torch.utils.data.Dataset):
@@ -229,7 +224,8 @@ class Data(torch.utils.data.Dataset):
     def get_f0_pvoiced(self, audio, sampling_rate=22050, frame_length=1024,
                        hop_length=256, f0_min=100, f0_max=300):
 
-        audio_norm = audio / self.max_wav_value
+        # audio_norm = audio / self.max_wav_value   # convert int16 to float
+        audio_norm = audio
         f0, voiced_mask, p_voiced = pyin(
             audio_norm, f0_min, f0_max, sampling_rate,
             frame_length=frame_length, win_length=frame_length // 2,
@@ -245,9 +241,20 @@ class Data(torch.utils.data.Dataset):
         energy_avg = self.energy_avg_normalize(energy_avg)
         return energy_avg
 
+    def load_wav_to_torch(self, full_path, sr=None):
+        """ Loads wavdata into torch array """
+        if sr is None:
+            sampling_rate, data = read(full_path)
+            data = torch.from_numpy(np.array(data)).float()/self.max_wav_value
+        else:
+            data, sampling_rate = librosa.load(full_path, sr=sr, mono=True)
+            data = torch.from_numpy(data)
+        return data, sampling_rate
+
+
     def get_mel(self, audio):
-        audio_norm = audio / self.max_wav_value
-        audio_norm = audio_norm.unsqueeze(0)
+        # audio_norm = audio / self.max_wav_value  # convert int16 to float
+        audio_norm = audio.unsqueeze(0)
         audio_norm = torch.autograd.Variable(audio_norm, requires_grad=False)
         melspec = self.stft.mel_spectrogram(audio_norm)
         melspec = torch.squeeze(melspec, 0)
@@ -389,7 +396,8 @@ class Data(torch.utils.data.Dataset):
             audio = data_dict['audio']
             sampling_rate = data_dict['sampling_rate']
         else:
-            audio, sampling_rate = load_wav_to_torch(audiopath)
+            audio, sampling_rate = self.load_wav_to_torch(
+                audiopath, sr=self.sampling_rate)
 
         if sampling_rate != self.sampling_rate:
             raise ValueError("{} SR doesn't match target {} SR".format(
