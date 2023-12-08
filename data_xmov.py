@@ -42,13 +42,11 @@ class Data(torch.utils.data.Dataset):
                  append_space_to_text=True, add_bos_eos_to_text=False,
                  betabinom_cache_path="", betabinom_scaling_factor=0.05,
                  lmdb_cache_path="", dur_min=None, dur_max=None,
-                 combine_speaker_and_emotion=False, **kwargs):
+                 combine_speaker_and_emotion=False, evaluation=True, **kwargs):
 
         self.combine_speaker_and_emotion = combine_speaker_and_emotion
         self.max_wav_value = max_wav_value
         self.audio_lmdb_dict = {}  # dictionary of lmdbs for audio data
-        self.spk2utt = {}
-        self.data = self.load_data(datasets)
         self.distance_tx_unvoiced = False
         if 'distance_tx_unvoiced' in kwargs.keys():
             self.distance_tx_unvoiced = kwargs['distance_tx_unvoiced']
@@ -90,6 +88,12 @@ class Data(torch.utils.data.Dataset):
 
         self.dur_min = dur_min
         self.dur_max = dur_max
+        self.min_spk_dur = kwargs.get('min_spk_dur', 0.0)
+        self.evaluation = evaluation
+
+        self.spk2utt = {}
+        self.data = self.load_data(datasets)
+
         if speaker_ids is None or speaker_ids == '':
             self.speaker_ids = self.create_speaker_lookup_table(self.data)
         else:
@@ -125,8 +129,6 @@ class Data(torch.utils.data.Dataset):
         if 'speaker_map' in kwargs:
             self.speaker_map = kwargs['speaker_map']
 
-
-
     def load_data(self, datasets, split='|'):
         dataset = []
         for dset_name, dset_dict in datasets.items():
@@ -149,6 +151,11 @@ class Data(torch.utils.data.Dataset):
             for speaker, info in data.items():
                 spk, sid = speaker.split("|")
                 total_dur, filelists = info
+                if total_dur < self.min_spk_dur and self.evaluation is not True:
+                    print(
+                        f"ignore speaker {speaker}, whose duration {total_dur} "
+                        f"is less than the min_spk_dur {self.min_spk_dur}")
+                    continue
                 if sid not in self.spk2utt:
                     self.spk2utt[sid] = []
                 for filelist in filelists:

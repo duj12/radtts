@@ -136,14 +136,15 @@ def prepare_dataloaders(data_config, n_gpus, batch_size):
     print("initializing training dataloader")
     trainset = Data(data_config['training_files'],
                     **dict((k, v) for k, v in data_config.items()
-                    if k not in ignore_keys))
+                    if k not in ignore_keys), evaluation=False)
 
     print("initializing validation dataloader")
     data_config_val = data_config.copy()
     data_config_val['aug_probabilities'] = None  # no aug in val set
     valset = Data(data_config['validation_files'],
                   **dict((k, v) for k, v in data_config_val.items()
-                  if k not in ignore_keys), speaker_ids=trainset.speaker_ids)
+                  if k not in ignore_keys), speaker_ids=trainset.speaker_ids,
+                  evaluation=True)
 
     collate_fn = DataCollate()
 

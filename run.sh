@@ -153,3 +153,22 @@ if [ $stage -eq 8 ]; then
       -p train_config.output_directory=exp/styletts_xmov_alldata \
       model_config.include_modules=decatndpmgst >> train_styletts_xmov_alldata.log 2>&1 &
 fi
+
+
+# 训练ASR数据的radtts模型, 对齐不用到spk_emb, 为了处理未知说话人，只根据text_emb对齐
+if [ $stage -eq 9 ]; then
+    # 直接尝试从头训encoder decoder gst 和 dp, 以TTS数据训练的ckpt初始化
+gpuid=2,3
+nodes_num=2
+threads=4
+portnum=9000
+CUDA_VISIBLE_DEVICES=$gpuid OMP_NUM_THREADS=${threads} \
+  torchrun --nproc_per_node ${nodes_num} \
+      --master_port $portnum  \
+      train_xmov.py \
+      -c configs/config_xmov_asrdata_styletts_16k.json \
+      -p train_config.output_directory=exp/styletts_xmov_asrdata \
+      train_config.warmstart_checkpoint_path=exp/styletts_xmov_alldata/model_1000000 \
+      model_config.include_modules=decatndpmgst \
+      train_config.ignore_layers_warmstart=speaker_embedding
+fi
