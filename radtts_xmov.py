@@ -1473,15 +1473,16 @@ class StyleTTS(torch.nn.Module):
         n_tokens = text.shape[1]
         if not self.use_gst:
             spk_vec = self.encode_speaker(speaker_id)
+            spk_vec_text, spk_vec_attributes = spk_vec, spk_ve
+            if speaker_id_text is not None:
+                spk_vec_text = self.encode_speaker(speaker_id_text)
+            if speaker_id_attributes is not None:
+                spk_vec_attributes = self.encode_speaker(speaker_id_attributes)
         else:
             mel_mask = get_mask_from_lengths(mel_lens)[..., None]
             spk_vec = self.encode_speaker(mel_gt, mask=mel_mask)
 
-        spk_vec_text, spk_vec_attributes = spk_vec, spk_vec
-        if speaker_id_text is not None:
-            spk_vec_text = self.encode_speaker(speaker_id_text)
-        if speaker_id_attributes is not None:
-            spk_vec_attributes = self.encode_speaker(speaker_id_attributes)
+            spk_vec_text, spk_vec_attributes = spk_vec, spk_vec
 
         txt_enc, txt_emb = self.encode_text(text, tone, lang, in_lens)
 

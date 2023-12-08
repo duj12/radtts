@@ -9,7 +9,7 @@ import torch
 from torch.cuda import amp
 from scipy.io.wavfile import write
 
-from radtts_xmov import RADTTS
+from radtts_xmov import RADTTS, StyleTTS
 from data_xmov import Data, DataCollate
 from torch.utils.data import DataLoader
 from common import update_params
@@ -131,7 +131,7 @@ def infer(radtts_path, vocoder_path, vocoder_config_path, text_path, speaker,
     torch.cuda.manual_seed(seed)
 
     vocoder, denoiser = load_vocoder(vocoder_path, vocoder_config_path)
-    radtts = RADTTS(**model_config).cuda()
+    radtts = globals()[model_config['model_type']](**model_config).cuda()
     radtts.enable_inverse_cache() # cache inverse matrix for 1x1 invertible convs
 
     checkpoint_dict = torch.load(radtts_path, map_location='cpu')
@@ -141,7 +141,8 @@ def infer(radtts_path, vocoder_path, vocoder_config_path, text_path, speaker,
     print("Loaded checkpoint '{}')" .format(radtts_path))
     if output_dir is None:
         output_dir = os.path.dirname(radtts_path)
-        output_dir = os.path.join(output_dir, "results")
+        radtts_name = os.path.basename(radtts_path)
+        output_dir = os.path.join(output_dir, f"results_{radtts_name}")
     os.makedirs(output_dir, exist_ok=True)
 
     ignore_keys = ['training_files', 'validation_files', 'test_files']
@@ -281,7 +282,7 @@ def infer(radtts_path, vocoder_path, vocoder_config_path, text_path, speaker,
             text, spk, lang_id = text[0], text[1], int(text[2])
         elif len(text) == 4:
             text, spk, lang_id, audiopath = text[0:4]
-            audio, sampling_rate = load_wav_to_torch(audiopath)
+            audio, sampling_rate = testset.load_wav_to_torch(audiopath)
             mel_gt = testset.get_mel(audio)
             lang_id = int(lang_id)
 
