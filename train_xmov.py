@@ -279,7 +279,7 @@ def compute_validation_loss(iteration, model, criterion, valset, collate_fn,
                                 dur=durations, f0=None, energy_avg=None,
                                 voiced_mask=None, sigma_f0=attribute_sigma,
                                 sigma_energy=attribute_sigma, in_lens=in_lens[0:1],
-                                mel_gt=mel[0:1], mel_lens=out_lens[0:1])
+                                mel_gt=mel[0:1,:,:out_lens[0]], mel_lens=out_lens[0:1])
                         else:
                             model_output = model.infer(
                                 speaker_ids[0:1], text[0:1],
@@ -287,7 +287,7 @@ def compute_validation_loss(iteration, model, criterion, valset, collate_fn,
                                 dur=durations, f0=f0[0:1, :durations.sum()],
                                 energy_avg=energy_avg[0:1, :durations.sum()],
                                 voiced_mask=voiced_mask[0:1, :durations.sum()],
-                                mel_gt=mel[0:1], mel_lens=out_lens[0:1])
+                                mel_gt=mel[0:1,:,:out_lens[0]], mel_lens=out_lens[0:1])
                     except:
                         # raise RuntimeError("inference error, you need to check inference code.")
                         print("Instability or issue occured during inference, skipping sample generation for TB logger")

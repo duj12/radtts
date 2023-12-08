@@ -1473,7 +1473,7 @@ class StyleTTS(torch.nn.Module):
         n_tokens = text.shape[1]
         if not self.use_gst:
             spk_vec = self.encode_speaker(speaker_id)
-            spk_vec_text, spk_vec_attributes = spk_vec, spk_ve
+            spk_vec_text, spk_vec_attributes = spk_vec, spk_vec
             if speaker_id_text is not None:
                 spk_vec_text = self.encode_speaker(speaker_id_text)
             if speaker_id_attributes is not None:

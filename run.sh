@@ -168,7 +168,8 @@ CUDA_VISIBLE_DEVICES=$gpuid OMP_NUM_THREADS=${threads} \
       train_xmov.py \
       -c configs/config_xmov_asrdata_styletts_16k.json \
       -p train_config.output_directory=exp/styletts_xmov_asrdata \
-      train_config.warmstart_checkpoint_path=exp/styletts_xmov_alldata/model_1000000 \
       model_config.include_modules=decatndpmgst \
-      train_config.ignore_layers_warmstart=speaker_embedding
+      train_config.checkpoint_path=exp/styletts_xmov_asrdata/model_10000
+#      train_config.warmstart_checkpoint_path=exp/styletts_xmov_alldata/model_1000000 \
+#      train_config.ignore_layers_warmstart=speaker_embedding
 fi
