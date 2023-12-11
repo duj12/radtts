@@ -282,7 +282,8 @@ def infer(radtts_path, vocoder_path, vocoder_config_path, text_path, speaker,
             text, spk, lang_id = text[0], text[1], int(text[2])
         elif len(text) == 4:
             text, spk, lang_id, audiopath = text[0:4]
-            audio, sampling_rate = testset.load_wav_to_torch(audiopath)
+            audio, sampling_rate = testset.load_wav_to_torch(
+                audiopath, testset.sampling_rate)
             mel_gt = testset.get_mel(audio)
             lang_id = int(lang_id)
 

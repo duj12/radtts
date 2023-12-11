@@ -14,7 +14,11 @@ import librosa
 from librosa import pyin
 from common import update_params
 from scipy.ndimage import distance_transform_edt as distance_transform
+import re
 
+def remove_trailing_digits(string):
+    pattern = r'\d+$'  # 匹配末尾的数字
+    return re.sub(pattern, '', string)
 
 def beta_binomial_prior_distribution(phoneme_count, mel_count,
                                      scaling_factor=0.05):
@@ -330,7 +334,10 @@ class Data(torch.utils.data.Dataset):
                 else:
                     pho = phoneme
                     tone_id = 0
-
+                # make sure pho not end with digit
+                if pho[-1].isdigit():
+                    print(f"phonemes endswith digits: {phonemes}")
+                    pho = remove_trailing_digits(pho)
                 pho_id = self.phoneme_id_dict[pho]
                 pho_ids.append(pho_id)
                 tone_ids.append(tone_id)
@@ -353,7 +360,10 @@ class Data(torch.utils.data.Dataset):
                 else:
                     pho = phoneme
                     tone_id = 0
-
+                # make sure pho not end with digit
+                if pho[-1].isdigit():
+                    print(f"phonemes endswith digits: {phonemes}")
+                    pho = remove_trailing_digits(pho)
                 pho_id = self.phoneme_id_dict[pho]
                 pho_ids.append(pho_id)
                 tone_ids.append(tone_id)
