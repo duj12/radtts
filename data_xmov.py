@@ -331,13 +331,15 @@ class Data(torch.utils.data.Dataset):
                         else:
                             pho = phoneme
                             tone_id = 0
+
+                    # make sure pho not end with digit
+                    if pho[-1].isdigit():
+                        print(f"phonemes endswith digits: {pho}")
+                        pho = remove_trailing_digits(pho)
                 else:
                     pho = phoneme
                     tone_id = 0
-                # make sure pho not end with digit
-                if pho[-1].isdigit():
-                    print(f"phonemes endswith digits: {phonemes}")
-                    pho = remove_trailing_digits(pho)
+
                 pho_id = self.phoneme_id_dict[pho]
                 pho_ids.append(pho_id)
                 tone_ids.append(tone_id)
@@ -357,13 +359,15 @@ class Data(torch.utils.data.Dataset):
                     else:
                         pho = phoneme[:-2]
                         tone_id = 14
+
+                    # make sure pho not end with digit
+                    if pho[-1].isdigit():
+                        print(f"phonemes endswith digits: {pho}")
+                        pho = remove_trailing_digits(pho)
                 else:
                     pho = phoneme
                     tone_id = 0
-                # make sure pho not end with digit
-                if pho[-1].isdigit():
-                    print(f"phonemes endswith digits: {phonemes}")
-                    pho = remove_trailing_digits(pho)
+
                 pho_id = self.phoneme_id_dict[pho]
                 pho_ids.append(pho_id)
                 tone_ids.append(tone_id)
