@@ -57,6 +57,54 @@ def lines_to_list(filename):
     return files
 
 
+def plot_tsne_embedding(embed_vectors, save_path):
+    from sklearn.manifold import TSNE
+    import matplotlib.pyplot as plt
+    # 创建 t-SNE 模型
+    tsne = TSNE(n_components=2, random_state=42)
+    # 使用 t-SNE 对向量进行降维
+    embedded_vectors = tsne.fit_transform(embed_vectors)
+    # 获取降维后的坐标
+    x_coords = embedded_vectors[:, 0]
+    y_coords = embedded_vectors[:, 1]
+    # 绘制散点图
+    plt.scatter(x_coords, y_coords)
+    plt.title('t-SNE Visualization of Vectors')
+    plt.savefig(save_path)
+    plt.close()
+
+
+def plot_arrays_value(matrices, submatrix_names, save_path):
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+    import numpy as np
+    # 合并多个子矩阵为一个大矩阵
+    combined_matrix = np.concatenate(matrices, axis=0)
+    # 设置调色板
+    cmap = 'coolwarm'  # 使用 'coolwarm' 调色板来表示数值的大小
+    fig = plt.figure()
+    # 绘制热力图
+    ax = sns.heatmap(combined_matrix, cmap=cmap, cbar=True,
+                     linecolor='white')
+
+    # 设置每个子矩阵的名称
+    num_submatrices = len(matrices)
+    num_rows_per_submatrix = combined_matrix.shape[0] // num_submatrices
+
+    tick_positions = np.arange(0+num_rows_per_submatrix,
+                               combined_matrix.shape[0]+num_rows_per_submatrix,
+                               num_rows_per_submatrix)
+
+    ax.set_yticks(tick_positions)
+    ax.set_yticklabels(submatrix_names, rotation=45,)
+    ax.tick_params(labelsize=10)
+    fig.set_size_inches(16, 8)
+    # 保存图像到文件
+    plt.savefig(save_path)
+    # 关闭当前图像窗口
+    plt.close()
+
+
 def load_vocoder(vocoder_path, config_path, to_cuda=True):
     with open(config_path) as f:
         data_vocoder = f.read()
@@ -125,7 +173,8 @@ def infer(radtts_path, vocoder_path, vocoder_config_path, text_path, speaker,
           speaker_text, speaker_attributes, sigma, sigma_tkndur, sigma_f0,
           sigma_energy, f0_mean, f0_std, energy_mean, energy_std,
           token_dur_scaling, denoising_strength, n_takes, output_dir, use_amp,
-          plot, seed, use_dp=False, do_skip=False, add_p_before_haha=False):
+          plot, seed, use_dp=False, do_skip=False, add_p_before_haha=False,
+          return_score=False):
 
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
@@ -144,6 +193,9 @@ def infer(radtts_path, vocoder_path, vocoder_config_path, text_path, speaker,
         radtts_name = os.path.basename(radtts_path)
         output_dir = os.path.join(output_dir, f"results_{radtts_name}")
     os.makedirs(output_dir, exist_ok=True)
+
+    plot_tsne_embedding(radtts.speaker_embedding.embed.detach().cpu().numpy(),
+                        f"{output_dir}/gst_{radtts_name}.png")
 
     ignore_keys = ['training_files', 'validation_files', 'test_files']
     if 'test_files' in data_config:
@@ -262,6 +314,7 @@ def infer(radtts_path, vocoder_path, vocoder_config_path, text_path, speaker,
     all_num, all_shift, ave_shift = 0, 0, 0
     special_all_num, special_all_shift, special_ave_shift = 0, 0, 0
     laugh_all_num, laugh_all_shift, laugh_ave_shift = 0, 0, 0
+    gst_attn_scores, gst_save_names = [], []
     for i, text in enumerate(text_list):
         if text.startswith("#"):
             continue
@@ -357,7 +410,8 @@ def infer(radtts_path, vocoder_path, vocoder_config_path, text_path, speaker,
                         energy_mean=energy_mean,
                         energy_std=energy_std,
                         mel_gt=mel_gt, attn_prior=attn_prior,
-                        in_lens=in_lens, mel_lens=out_lens
+                        in_lens=in_lens, mel_lens=out_lens,
+                        return_score=return_score,
                     )
 
                     mel = outputs['mel']
@@ -385,6 +439,10 @@ def infer(radtts_path, vocoder_path, vocoder_config_path, text_path, speaker,
                         data_config['sampling_rate'], audio_denoised)
                     write("{}/{}.wav".format(output_dir, suffix_path),
                           data_config['sampling_rate'], audio)
+
+                    if return_score:
+                        gst_save_names.append(suffix_path)
+                        gst_attn_scores.append(outputs['gst_attn_score'])
 
                     if mel_gt is not None and outputs['attn'] is not None:
                         if use_dp:  # do not use the attn from mel and text
@@ -455,6 +513,9 @@ def infer(radtts_path, vocoder_path, vocoder_config_path, text_path, speaker,
                 plt.tight_layout()
                 fig.savefig("{}/{}_features.png".format(output_dir, suffix_path))
                 plt.close('all')
+    if len(gst_attn_scores)>0:
+        plot_arrays_value(gst_attn_scores, gst_save_names,
+                          f"{output_dir}/gst_scores_{radtts_name}.png")
 
     if all_num != 0:
         ave_shift = all_shift / all_num
@@ -540,6 +601,7 @@ if __name__ == "__main__":
     parser.add_argument("--use_dp", action="store_true")
     parser.add_argument("--do_skip", action="store_true")
     parser.add_argument("--add_p_before_haha", action="store_true")
+    parser.add_argument("--return_gst_attn_score", action="store_true")
     parser.add_argument("--seed", default=1234, type=int)
     args = parser.parse_args()
 
@@ -563,4 +625,5 @@ if __name__ == "__main__":
           args.sigma_energy, args.f0_mean, args.f0_std, args.energy_mean,
           args.energy_std, args.token_dur_scaling, args.denoising_strength,
           args.n_takes, args.output_dir, args.use_amp, args.plot, args.seed,
-          args.use_dp, args.do_skip, args.add_p_before_haha)
+          args.use_dp, args.do_skip, args.add_p_before_haha,
+          return_score=args.return_gst_attn_score)

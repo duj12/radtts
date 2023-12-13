@@ -161,12 +161,12 @@ class GlobalStyleTokens(nn.Module):
 
         nn.init.normal_(self.embed, mean=0, std=0.5)
 
-    def forward(self, inputs):
+    def forward(self, inputs, return_score=False):
         N = inputs.size(0)
         query = inputs.unsqueeze(1)  # [N, 1, E]
         # [N, token_num, E // num_heads]
         keys = F.tanh(self.embed).unsqueeze(0).expand(N, -1, -1)
-        style_embed = self.attention(query, keys)
+        style_embed = self.attention(query, keys, return_score)
 
         return style_embed
 
@@ -1147,7 +1147,7 @@ class StyleTTS(torch.nn.Module):
         """
         return self.n_f0_dims == 0 and self.n_energy_avg_dims == 0
 
-    def encode_speaker(self, spk_ids_or_mel, mask=None):
+    def encode_speaker(self, spk_ids_or_mel, mask=None, return_score=False):
         if not self.use_gst:
             spk_ids = spk_ids_or_mel * 0 if self.dummy_speaker_embedding \
                 else spk_ids_or_mel
@@ -1155,7 +1155,11 @@ class StyleTTS(torch.nn.Module):
         else:
             style_embedding = self.style_encoder(
                 spk_ids_or_mel.transpose(1,2), mask.transpose(1,2))
-            spk_vecs = self.speaker_embedding(style_embedding).squeeze(1)  # B D
+            spk_vecs = self.speaker_embedding(
+                style_embedding, return_score)
+            if return_score:
+                spk_vecs, gst_attn = spk_vecs[0].squeeze(1), spk_vecs[1]  # B D
+                spk_vecs = (spk_vecs, gst_attn)
         return spk_vecs
 
     def encode_text(self, text, tone, lang, in_lens):
@@ -1468,9 +1472,11 @@ class StyleTTS(torch.nn.Module):
               speaker_id_text=None, speaker_id_attributes=None, dur=None,
               f0=None, energy_avg=None, voiced_mask=None, f0_mean=0.0,
               f0_std=0.0, energy_mean=0.0, energy_std=0.0,
-              mel_gt=None, attn_prior=None, in_lens=None, mel_lens=None):
+              mel_gt=None, attn_prior=None, in_lens=None, mel_lens=None,
+              return_score=False):
         batch_size = text.shape[0]
         n_tokens = text.shape[1]
+        gst_attn_score = None
         if not self.use_gst:
             spk_vec = self.encode_speaker(speaker_id)
             spk_vec_text, spk_vec_attributes = spk_vec, spk_vec
@@ -1480,8 +1486,10 @@ class StyleTTS(torch.nn.Module):
                 spk_vec_attributes = self.encode_speaker(speaker_id_attributes)
         else:
             mel_mask = get_mask_from_lengths(mel_lens)[..., None]
-            spk_vec = self.encode_speaker(mel_gt, mask=mel_mask)
-
+            spk_vec = self.encode_speaker(
+                mel_gt, mask=mel_mask, return_score=return_score)
+            if return_score:
+                spk_vec, gst_attn_score = spk_vec[0], spk_vec[1]
             spk_vec_text, spk_vec_attributes = spk_vec, spk_vec
 
         txt_enc, txt_emb = self.encode_text(text, tone, lang, in_lens)
@@ -1632,7 +1640,8 @@ class StyleTTS(torch.nn.Module):
                 'attn': attn,
                 'f0': f0,
                 'energy_avg': energy_avg,
-                'voiced_mask': voiced_mask
+                'voiced_mask': voiced_mask,
+                'gst_attn_score': gst_attn_score,
                 }
 
     def infer_f0(self, residual, txt_enc_time_expanded, spk_vec,

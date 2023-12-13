@@ -359,7 +359,7 @@ class MultiHeadAttention_GivenK(nn.Module):
         self.W_value = nn.Linear(
             in_features=key_dim, out_features=num_units, bias=False)
 
-    def forward(self, query, key):
+    def forward(self, query, key, return_score=False):
         querys = self.W_query(query)  # [N, T_q, num_units]
         keys = self.W_key(key)  # [N, T_k, num_units]
         values = self.W_value(key)
@@ -381,5 +381,6 @@ class MultiHeadAttention_GivenK(nn.Module):
         out = torch.matmul(scores, values)  # [h, N, T_q, num_units/h]
         # [N, T_q, num_units]
         out = torch.cat(torch.split(out, 1, dim=0), dim=3).squeeze(0)
-
+        if return_score:
+            return (out, scores[:,0,0,:].detach().cpu().numpy())
         return out
