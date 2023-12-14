@@ -29,7 +29,7 @@ from torch.utils.tensorboard import SummaryWriter
 from torch.cuda import amp
 from radam import RAdam
 from loss import RADTTSLoss, AttentionBinarizationLoss
-from radtts_xmov import RADTTS, StyleTTS
+from radtts_xmov import RADTTS, StyleTTS, StyleSpkTTS
 from data_xmov import Data, DataCollate
 from plotting_utils import plot_alignment_to_numpy
 from common import update_params
@@ -110,6 +110,7 @@ def parse_data_from_batch(batch):
     p_voiced = batch['p_voiced']
     energy_avg = batch['energy_avg']
     audiopaths = batch['audiopaths']
+    fbanks = batch['fbank']
     if attn_prior is not None:
         attn_prior = attn_prior.cuda()
     if f0 is not None:
@@ -124,10 +125,11 @@ def parse_data_from_batch(batch):
     mel, speaker_ids = mel.cuda(), speaker_ids.cuda()
     text, tone, lang = text.cuda(), tone.cuda(), lang.cuda()
     in_lens, out_lens = in_lens.cuda(), out_lens.cuda()
-
+    fbanks = fbanks.cuda()
     return (mel, speaker_ids, text, tone, lang,
             in_lens, out_lens, attn_prior, f0,
-            voiced_mask, p_voiced, energy_avg, audiopaths)
+            voiced_mask, p_voiced, energy_avg,
+            audiopaths, fbanks)
 
 
 def prepare_dataloaders(data_config, n_gpus, batch_size):
@@ -217,13 +219,13 @@ def compute_validation_loss(iteration, model, criterion, valset, collate_fn,
             (mel, speaker_ids, text, tone, lang,
              in_lens, out_lens, attn_prior,
              f0, voiced_mask, p_voiced, energy_avg,
-             audiopaths) = parse_data_from_batch(batch)
+             audiopaths, fbank) = parse_data_from_batch(batch)
 
             outputs = model(
                 mel, speaker_ids, text, tone, lang, in_lens, out_lens,
                 binarize_attention=True, attn_prior=attn_prior, f0=f0,
                 energy_avg=energy_avg, voiced_mask=voiced_mask,
-                p_voiced=p_voiced)
+                p_voiced=p_voiced, fbank=fbank)
             loss_outputs = criterion(outputs, in_lens, out_lens)
             for k, (v, w) in loss_outputs.items():
                 reduced_v = reduce_tensor(v, n_gpus, 0).item()
@@ -279,7 +281,9 @@ def compute_validation_loss(iteration, model, criterion, valset, collate_fn,
                                 dur=durations, f0=None, energy_avg=None,
                                 voiced_mask=None, sigma_f0=attribute_sigma,
                                 sigma_energy=attribute_sigma, in_lens=in_lens[0:1],
-                                mel_gt=mel[0:1,:,:out_lens[0]], mel_lens=out_lens[0:1])
+                                mel_gt=mel[0:1,:,:out_lens[0]], mel_lens=out_lens[0:1],
+                                fbank=fbank[0:1]
+                            )
                         else:
                             model_output = model.infer(
                                 speaker_ids[0:1], text[0:1],
@@ -287,7 +291,9 @@ def compute_validation_loss(iteration, model, criterion, valset, collate_fn,
                                 dur=durations, f0=f0[0:1, :durations.sum()],
                                 energy_avg=energy_avg[0:1, :durations.sum()],
                                 voiced_mask=voiced_mask[0:1, :durations.sum()],
-                                mel_gt=mel[0:1,:,:out_lens[0]], mel_lens=out_lens[0:1])
+                                mel_gt=mel[0:1,:,:out_lens[0]], mel_lens=out_lens[0:1],
+                                fbank=fbank[0:1]
+                            )
                     except:
                         # raise RuntimeError("inference error, you need to check inference code.")
                         print("Instability or issue occured during inference, skipping sample generation for TB logger")
@@ -395,7 +401,7 @@ def train(n_gpus, rank, output_directory, epochs, optim_algo, learning_rate,
             (mel, speaker_ids, text, tone, lang,
              in_lens, out_lens, attn_prior,
              f0, voiced_mask, p_voiced, energy_avg,
-             audiopaths) = parse_data_from_batch(batch)
+             audiopaths, fbank) = parse_data_from_batch(batch)
 
             if iteration >= binarization_start_iter:
                 binarize = True   # binarization training phase
@@ -407,7 +413,9 @@ def train(n_gpus, rank, output_directory, epochs, optim_algo, learning_rate,
                     mel, speaker_ids, text, tone, lang, in_lens, out_lens,
                     binarize_attention=binarize, attn_prior=attn_prior,
                     f0=f0, energy_avg=energy_avg,
-                    voiced_mask=voiced_mask, p_voiced=p_voiced)
+                    voiced_mask=voiced_mask, p_voiced=p_voiced,
+                    fbank=fbank
+                )
                 loss_outputs = criterion(outputs, in_lens, out_lens)
 
                 loss = None

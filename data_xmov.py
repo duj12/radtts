@@ -14,6 +14,8 @@ import librosa
 from librosa import pyin
 from common import update_params
 from scipy.ndimage import distance_transform_edt as distance_transform
+from CAMPPlus import FBank
+import random
 import re
 
 def remove_trailing_digits(string):
@@ -97,6 +99,18 @@ class Data(torch.utils.data.Dataset):
 
         self.spk2utt = {}
         self.data = self.load_data(datasets)
+
+        self.fbank_dim = kwargs.get('fbank_dim', 80)
+        self.fbank_sr = kwargs.get('fbank_sr', 16000)
+        fbank_trim_sil = kwargs.get('fbank_trim_sil', False)
+        self.fbank_extractor = FBank(
+            self.fbank_dim, sample_rate=self.fbank_sr, mean_nor=True,
+            trim_sil=fbank_trim_sil)
+
+        self.load_spec_from_disk = kwargs.get('load_spec_from_disk', False)
+        print("self.load_spec_from_disk:", self.load_spec_from_disk)
+        self.use_ref_audio = kwargs.get('use_ref_audio', True)
+        print("self.use_ref_audio:", self.use_ref_audio)
 
         if speaker_ids is None or speaker_ids == '':
             self.speaker_ids = self.create_speaker_lookup_table(self.data)
@@ -275,6 +289,34 @@ class Data(torch.utils.data.Dataset):
             melspec += torch.randn_like(melspec) * self.mel_noise_scale
         return melspec
 
+    def get_ref_fbank(self, wav_or_path, fbank_path=None):
+        '''
+        Get the fbank of reference wav, for voice cloning.
+        :param wav_path:
+        :param fbank_path:
+        :return:
+        '''
+        if isinstance(wav_or_path, str):
+            assert os.path.exists(wav_or_path), f"{wav_or_path} not exist."
+            wave = torch.from_numpy(
+                librosa.load(wav_or_path, sr=self.sampling_rate, mono=True)[0])
+        else:
+            wave = wav_or_path
+
+        if self.load_spec_from_disk and fbank_path is not None:
+            try:
+                fbank = torch.from_numpy(np.load(fbank_path))  # fbank_dim * T
+            except Exception:
+                print("gen fbank to", fbank_path)  # [T, D]  -> [D, T]
+                fbank = self.fbank_extractor(
+                    wave, sr=self.sampling_rate).transpose(0, 1)
+                np.save(fbank_path, fbank.numpy())
+        else:  # [T, D]  -> [D, T]
+            fbank = self.fbank_extractor(
+                wave, sr=self.sampling_rate).transpose(0, 1)
+
+        return wave, fbank
+
     def get_speaker_id(self, speaker):
         if self.speaker_map is not None and speaker in self.speaker_map:
             speaker = self.speaker_map[speaker]
@@ -425,6 +467,12 @@ class Data(torch.utils.data.Dataset):
                 sampling_rate, self.sampling_rate))
 
         mel = self.get_mel(audio)
+        if self.use_ref_audio:
+            ref_audio = random.choice(self.spk2utt[speaker_id])
+        else:
+            ref_audio = audio
+        ref_wave, ref_fbank = self.get_ref_fbank(ref_audio, None)
+
         f0 = None
         p_voiced = None
         voiced_mask = None
@@ -498,6 +546,7 @@ class Data(torch.utils.data.Dataset):
                 'p_voiced': p_voiced,
                 'voiced_mask': voiced_mask,
                 'energy_avg': energy_avg,
+                'fbank': ref_fbank
                 }
 
     def __len__(self):
@@ -539,6 +588,13 @@ class DataCollate():
         # include mel padded, gate padded and speaker ids
         mel_padded = torch.FloatTensor(len(batch), num_mel_channels, max_target_len)
         mel_padded.zero_()
+
+        # Right zero-pad reference fbank  [D,T]
+        num_fbank_channels = batch[0]['fbank'].size(0)
+        max_fbank_len = max([x['fbank'].size(1) for x in batch])
+        fbank_padded = torch.FloatTensor(len(batch), num_fbank_channels, max_fbank_len)
+        fbank_padded.zero_()
+
         f0_padded = None
         p_voiced_padded = None
         voiced_mask_padded = None
@@ -569,6 +625,8 @@ class DataCollate():
         for i in range(len(ids_sorted_decreasing)):
             mel = batch[ids_sorted_decreasing[i]]['mel']
             mel_padded[i, :, :mel.size(1)] = mel
+            fbank = batch[ids_sorted_decreasing[i]]['fbank']
+            fbank_padded[i, :, :fbank.size(1)] = fbank
             if batch[ids_sorted_decreasing[i]]['f0'] is not None:
                 f0 = batch[ids_sorted_decreasing[i]]['f0']
                 f0_padded[i, :len(f0)] = f0
@@ -610,7 +668,8 @@ class DataCollate():
                 'f0': f0_padded,
                 'p_voiced': p_voiced_padded,
                 'voiced_mask': voiced_mask_padded,
-                'energy_avg': energy_avg_padded
+                'energy_avg': energy_avg_padded,
+                'fbank': fbank_padded
                 }
 
 
