@@ -82,23 +82,36 @@ def plot_arrays_value(matrices, submatrix_names, save_path):
     combined_matrix = np.concatenate(matrices, axis=0)
     # 设置调色板
     cmap = 'coolwarm'  # 使用 'coolwarm' 调色板来表示数值的大小
-    fig = plt.figure()
+    # 创建一个新的图形对象和子图
+    fig, (ax_heatmap, ax_hist) = plt.subplots(
+        nrows=2, gridspec_kw={'height_ratios': [4, 1], 'width_ratios': [1]})
+    fig.set_size_inches(16, 12)
     # 绘制热力图
-    ax = sns.heatmap(combined_matrix, cmap=cmap, cbar=True,
-                     linecolor='white')
-
+    sns.heatmap(combined_matrix, cmap=cmap, cbar=True,
+                linecolor='white', ax=ax_heatmap)
     # 设置每个子矩阵的名称
     num_submatrices = len(matrices)
     num_rows_per_submatrix = combined_matrix.shape[0] // num_submatrices
-
     tick_positions = np.arange(0+num_rows_per_submatrix,
                                combined_matrix.shape[0]+num_rows_per_submatrix,
                                num_rows_per_submatrix)
+    ax_heatmap.set_title("StyleTokens' Attention Score Heatmap")
+    ax_heatmap.set_yticks(tick_positions)
+    ax_heatmap.set_yticklabels(submatrix_names, rotation=45,)
+    ax_heatmap.tick_params(labelsize=10)
 
-    ax.set_yticks(tick_positions)
-    ax.set_yticklabels(submatrix_names, rotation=45,)
-    ax.tick_params(labelsize=10)
-    fig.set_size_inches(16, 8)
+    # 计算矩阵在横轴方向的平均值
+    mean_values = np.mean(combined_matrix, axis=0)
+    # 绘制直方图
+    token_index = [x for x in range(matrices[0].shape[1])]
+    ax_hist.bar(token_index, mean_values)
+    # 设置直方图的标题和坐标轴标签
+    ax_hist.set_title("StyleTokens' Average Score on MultiSpeakers")
+    ax_hist.set_xlabel("Token Index")
+    ax_hist.set_ylabel("Average Score")
+    # 调整子图的位置
+    plt.subplots_adjust(hspace=0.3)
+
     # 保存图像到文件
     plt.savefig(save_path)
     # 关闭当前图像窗口
@@ -194,8 +207,8 @@ def infer(radtts_path, vocoder_path, vocoder_config_path, text_path, speaker,
         output_dir = os.path.join(output_dir, f"results_{radtts_name}")
     os.makedirs(output_dir, exist_ok=True)
 
-    plot_tsne_embedding(radtts.speaker_embedding.embed.detach().cpu().numpy(),
-                        f"{output_dir}/gst_{radtts_name}.png")
+    # plot_tsne_embedding(radtts.speaker_embedding.embed.detach().cpu().numpy(),
+    #                     f"{output_dir}/gst_{radtts_name}.png")
 
     ignore_keys = ['training_files', 'validation_files', 'test_files']
     if 'test_files' in data_config:
