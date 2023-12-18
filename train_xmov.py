@@ -332,6 +332,11 @@ def train(n_gpus, rank, output_directory, epochs, optim_algo, learning_rate,
     if n_gpus > 1:
         init_distributed(rank, n_gpus, **dist_config)
 
+    train_loader, valset, collate_fn = prepare_dataloaders(
+        data_config, n_gpus, batch_size)
+    n_speakers = len(train_loader.dataset.speaker_ids)
+    model_config['n_speakers'] = n_speakers
+
     criterion = RADTTSLoss(
         sigma,
         model_config['n_group_size'],
@@ -382,9 +387,6 @@ def train(n_gpus, rank, output_directory, epochs, optim_algo, learning_rate,
     for param_group in optimizer.param_groups:
         param_group['lr'] = learning_rate
 
-    train_loader, valset, collate_fn = prepare_dataloaders(
-        data_config, n_gpus, batch_size)
-
     if rank == 0:
         logger = prepare_output_folders_and_logger(output_directory)
 
@@ -431,6 +433,11 @@ def train(n_gpus, rank, output_directory, epochs, optim_algo, learning_rate,
                 else:
                     binarization_loss = torch.zeros_like(loss)
                 loss_outputs['binarization_loss'] = (binarization_loss, w_bin)
+
+                if 'loss_sv' in outputs and outputs['loss_sv'] is not None:
+                    loss += outputs['loss_sv']
+                    print(f"loss_sv: {outputs['loss_sv'].item()}, "
+                          f"acc_sv: {outputs['acc_sv'].item()}")
 
             scaler.scale(loss).backward()
             if grad_clip_val > 0:

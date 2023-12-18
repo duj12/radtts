@@ -9,7 +9,7 @@ import torch
 from torch.cuda import amp
 from scipy.io.wavfile import write
 
-from radtts_xmov import RADTTS, StyleTTS
+from radtts_xmov import RADTTS, StyleTTS, StyleSpkTTS
 from data_xmov import Data, DataCollate
 from torch.utils.data import DataLoader
 from common import update_params
@@ -340,7 +340,7 @@ def infer(radtts_path, vocoder_path, vocoder_config_path, text_path, speaker,
         mel, attn_prior = None, None
         in_lens, out_lens = None, None
         phos_list, phos_with_dur = None, None
-
+        ref_fbank = None
         # process each line
         if len(text) == 2:
             text, spk = text[0], text[1]
@@ -351,6 +351,7 @@ def infer(radtts_path, vocoder_path, vocoder_config_path, text_path, speaker,
             audio, sampling_rate = testset.load_wav_to_torch(
                 audiopath, testset.sampling_rate)
             mel_gt = testset.get_mel(audio)
+            ref_wave, ref_fbank = testset.get_ref_fbank(audio, None)
             lang_id = int(lang_id)
 
         # process text
@@ -400,6 +401,7 @@ def infer(radtts_path, vocoder_path, vocoder_config_path, text_path, speaker,
 
         if mel_gt is not None:
             mel_gt = mel_gt.cuda()[None]
+            ref_fbank = ref_fbank.cuda()[None]
             in_lens = torch.LongTensor(1).cuda()
             out_lens = torch.LongTensor(1).cuda()
             for i in range(1):
@@ -424,7 +426,7 @@ def infer(radtts_path, vocoder_path, vocoder_config_path, text_path, speaker,
                         energy_std=energy_std,
                         mel_gt=mel_gt, attn_prior=attn_prior,
                         in_lens=in_lens, mel_lens=out_lens,
-                        return_score=return_score,
+                        return_score=return_score, fbank=ref_fbank,
                     )
 
                     mel = outputs['mel']

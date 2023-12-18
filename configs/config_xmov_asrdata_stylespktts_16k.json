@@ -42,6 +42,55 @@
                 "filelist": "trainset_LTTS.json",
                 "language": "0",
                 "lmdbpath": ""
+            },
+            "NTTS": {
+                "basedir": "/data/megastore/Datasets/55data/TTS/NTTS",
+                "audiodir": "Formatted",
+                "filelist": "trainset_NTTS.json",
+                "language": "0",
+                "lmdbpath": ""
+            },
+            "ENTTS": {
+                "basedir": "/data/megastore/Datasets/55data/TTS/ENTTS",
+                "audiodir": "Formatted",
+                "filelist": "trainset_ENTTS.json",
+                "language": "1",
+                "lmdbpath": ""
+            },
+            "MSTTS_CN": {
+                "basedir": "/data/megastore/Datasets/55data/TTS/MSTTS_CN",
+                "audiodir": "Formatted",
+                "filelist": "trainset_MSTTS_CN.json",
+                "language": "0",
+                "lmdbpath": ""
+            },
+            "MSTTS_EN": {
+                "basedir": "/data/megastore/Datasets/55data/TTS/MSTTS_EN",
+                "audiodir": "Formatted",
+                "filelist": "trainset_MSTTS_EN.json",
+                "language": "1",
+                "lmdbpath": ""
+            },
+            "Mandarin": {
+                "basedir": "/data/megastore/Datasets/55data/TTS/Mandarin",
+                "audiodir": "Formatted",
+                "filelist": "Mandarin.json",
+                "language": "0",
+                "lmdbpath": ""
+            },
+            "ManEngMix": {
+                "basedir": "/data/megastore/Datasets/55data/TTS/ManEngMix",
+                "audiodir": "Formatted",
+                "filelist": "ManEngMix.json",
+                "language": "0",
+                "lmdbpath": ""
+            },
+            "Conversation": {
+                "basedir": "/data/megastore/Datasets/55data/TTS/Conversation",
+                "audiodir": "Formatted",
+                "filelist": "Conversation.json",
+                "language": "0",
+                "lmdbpath": ""
             }
         },
         "validation_files": {
@@ -49,6 +98,55 @@
                 "basedir": "/data/megastore/Datasets/55data/TTS/LTTS",
                 "audiodir": "Formatted",
                 "filelist": "validset_LTTS.json",
+                "language": "0",
+                "lmdbpath": ""
+            },
+            "NTTS": {
+                "basedir": "/data/megastore/Datasets/55data/TTS/NTTS",
+                "audiodir": "Formatted",
+                "filelist": "validset_NTTS.json",
+                "language": "0",
+                "lmdbpath": ""
+            },
+            "ENTTS": {
+                "basedir": "/data/megastore/Datasets/55data/TTS/ENTTS",
+                "audiodir": "Formatted",
+                "filelist": "validset_ENTTS.json",
+                "language": "1",
+                "lmdbpath": ""
+            },
+            "MSTTS_CN": {
+                "basedir": "/data/megastore/Datasets/55data/TTS/MSTTS_CN",
+                "audiodir": "Formatted",
+                "filelist": "validset_MSTTS_CN.json",
+                "language": "0",
+                "lmdbpath": ""
+            },
+            "MSTTS_EN": {
+                "basedir": "/data/megastore/Datasets/55data/TTS/MSTTS_EN",
+                "audiodir": "Formatted",
+                "filelist": "validset_MSTTS_EN.json",
+                "language": "1",
+                "lmdbpath": ""
+            },
+            "Mandarin": {
+                "basedir": "/data/megastore/Datasets/55data/TTS/NTTS",
+                "audiodir": "Formatted",
+                "filelist": "validset_NTTS.json",
+                "language": "0",
+                "lmdbpath": ""
+            },
+            "ManEngMix": {
+                "basedir": "/data/megastore/Datasets/55data/TTS/NTTS",
+                "audiodir": "Formatted",
+                "filelist": "validset_NTTS.json",
+                "language": "0",
+                "lmdbpath": ""
+            },
+            "Conversation": {
+                "basedir": "/data/megastore/Datasets/55data/TTS/NTTS",
+                "audiodir": "Formatted",
+                "filelist": "validset_NTTS.json",
                 "language": "0",
                 "lmdbpath": ""
             }
@@ -96,7 +194,7 @@
         "dist_url": "tcp://localhost:54321"
     },
     "model_config": {
-        "model_type": "StyleTTS",
+        "model_type": "StyleSpkTTS",
         "sv_need_grad": true,
         "gst_token_num": 2048,
         "n_speakers": 300,
@@ -117,7 +215,7 @@
         "n_early_every": 2,
         "n_group_size": 2,
         "affine_model": "wavenet",
-        "include_modules": "decatn",
+        "include_modules": "decatndpmgstspk",
         "scaling_fn": "tanh",
         "matrix_decomposition": "LUS",
         "learn_alignments": true,

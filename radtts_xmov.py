@@ -1785,9 +1785,8 @@ class StyleSpkTTS(torch.nn.Module):
                 print(f"speaker encoder not execute back propagation.")
             else:
                 print(f"speaker encoder execute back propagation.")
-                self.sv_labels = kwargs.get("sv_labels", self.n_speakers)
                 self.sv_classifier = CosineClassifier(
-                    input_dim=self.gin_channels, out_neurons=self.sv_labels)
+                    input_dim=192, out_neurons=n_speakers)
                 self.sv_criterion = ArcMarginLoss()
 
         self.embedding = torch.nn.Embedding(n_text, n_text_dim)  # pure text
@@ -2104,6 +2103,12 @@ class StyleSpkTTS(torch.nn.Module):
         # Add global speaker timbre vector
         if self.speaker_encoder is not None:
             timbre_vec = self.speaker_encoder(fbank)  #B D1
+            loss_sv, acc_sv = None, None
+            if self.sv_need_grad:
+                speaker_pred = self.sv_classifier(timbre_vec)
+                loss_sv = self.sv_criterion(speaker_pred, speaker_ids)
+                acc_sv = accuracy(speaker_pred, speaker_ids)
+
             if self.speaker_adapter is not None:
                 speaker_vecs = self.speaker_adapter(
                     speaker_vecs.unsqueeze(1),
@@ -2279,7 +2284,9 @@ class StyleSpkTTS(torch.nn.Module):
                    'attn_soft': attn_soft,
                    'attn': attn,
                    'text_embeddings': text_embeddings,
-                   'attn_logprob': attn_logprob
+                   'attn_logprob': attn_logprob,
+                   'loss_sv': loss_sv,
+                   'acc_sv': acc_sv,
                    }
 
         return outputs

@@ -109,7 +109,7 @@ class Data(torch.utils.data.Dataset):
 
         self.load_spec_from_disk = kwargs.get('load_spec_from_disk', False)
         print("self.load_spec_from_disk:", self.load_spec_from_disk)
-        self.use_ref_audio = kwargs.get('use_ref_audio', True)
+        self.use_ref_audio = kwargs.get('use_ref_audio', False)
         print("self.use_ref_audio:", self.use_ref_audio)
 
         if speaker_ids is None or speaker_ids == '':
@@ -182,10 +182,10 @@ class Data(torch.utils.data.Dataset):
                     text = sequence['text']
                     file_name = f"{spk}/{file_name}.wav"
                     audiopath = os.path.join(wav_folder, file_name)
-                    self.spk2utt[sid].append(audiopath)
                     if not os.path.exists(audiopath):
                         print(f"{audiopath} not exist, jump this sample.")
                         continue
+                    self.spk2utt[sid].append(audiopath)
                     dataset.append(
                         {'audiopath': audiopath,
                          'text': text,
