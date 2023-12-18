@@ -165,8 +165,8 @@ def prepare_dataloaders(data_config, n_gpus, batch_size):
 def warmstart(checkpoint_path, model, include_layers=[],
               ignore_layers_warmstart=[]):
     pretrained_dict = torch.load(checkpoint_path, map_location='cpu')
+    iteration = pretrained_dict['iteration']
     pretrained_dict = pretrained_dict['state_dict']
-
     if len(include_layers):
         pretrained_dict = {k: v for k, v in pretrained_dict.items()
                            if any(l in k for l in include_layers)}
@@ -179,7 +179,7 @@ def warmstart(checkpoint_path, model, include_layers=[],
     model_dict.update(pretrained_dict)
     model.load_state_dict(model_dict)
     print("Warm started from {}".format(checkpoint_path))
-    return model
+    return model, iteration
 
 
 def load_checkpoint(checkpoint_path, model, optimizer, ignore_layers=[]):
@@ -336,7 +336,7 @@ def train(n_gpus, rank, output_directory, epochs, optim_algo, learning_rate,
         data_config, n_gpus, batch_size)
     n_speakers = len(train_loader.dataset.speaker_ids)
     model_config['n_speakers'] = n_speakers
-
+    print(f"n_speakers: {n_speakers}")
     criterion = RADTTSLoss(
         sigma,
         model_config['n_group_size'],
@@ -371,8 +371,12 @@ def train(n_gpus, rank, output_directory, epochs, optim_algo, learning_rate,
     # Load checkpoint if one exists
     iteration = 0
     if warmstart_checkpoint_path != "":
-        model = warmstart(warmstart_checkpoint_path, model, include_layers,
-                          ignore_layers_warmstart)
+        model, warm_iter = warmstart(
+            warmstart_checkpoint_path, model,
+            include_layers, ignore_layers_warmstart)
+        warmstart_continue_iter = train_config.get('warmstart_continue_iter', False)
+        if warmstart_continue_iter:
+            iteration = warm_iter + 1
 
     if checkpoint_path != "":
         model, optimizer, iteration = load_checkpoint(

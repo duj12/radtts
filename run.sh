@@ -209,5 +209,5 @@ CUDA_VISIBLE_DEVICES=$gpuid OMP_NUM_THREADS=${threads} \
       train_xmov.py \
       -c configs/config_xmov_asrdata_stylespktts_16k.json \
       -p train_config.output_directory=exp/stylespktts_xmov_asrdata \
-      train_config.checkpoint_path=exp/stylespktts_xmov_asrdata/model_280000
+      train_config.warmstart_checkpoint_path=exp/stylespktts_xmov_asrdata/model_280000
 fi

@@ -19,6 +19,7 @@
         "log_attribute_samples": true,
         "log_decoder_samples": false,
         "warmstart_checkpoint_path": "",
+        "warmstart_continue_iter": true,
         "use_amp": false,
         "grad_clip_val": 1.0,
         "loss_weights": {
