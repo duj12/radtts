@@ -211,3 +211,22 @@ CUDA_VISIBLE_DEVICES=$gpuid OMP_NUM_THREADS=${threads} \
       -p train_config.output_directory=exp/stylespktts_xmov_asrdata \
       train_config.warmstart_checkpoint_path=exp/stylespktts_xmov_asrdata/model_280000
 fi
+
+
+# 训练ASR数据的radtts模型, 对齐使用说话人向量，让对齐得到的时长具备说话人特性
+if [ $stage -eq 12 ]; then
+    # 直接尝试从头训encoder decoder gst 和 dp, 以TTS数据训练的ckpt初始化
+    # 在加入spker encoder训练一段时间之后，解冻其参数，继续训练。看是否能解决合成噪声的问题。
+gpuid=4,5
+nodes_num=2
+threads=4
+portnum=9003
+CUDA_VISIBLE_DEVICES=$gpuid OMP_NUM_THREADS=${threads} \
+  torchrun --nproc_per_node ${nodes_num} \
+      --master_port $portnum  \
+      train_xmov.py \
+      -c configs/config_xmov_asrdata_stylespktts_16k_alnwspk.json \
+      -p train_config.output_directory=exp/stylespktts_asrdata_alnwspk \
+      train_config.warmstart_checkpoint_path=exp/stylespktts_xmov_asrdata/model_540000  \
+      train_config.ignore_layers_warmstart=attention
+fi
